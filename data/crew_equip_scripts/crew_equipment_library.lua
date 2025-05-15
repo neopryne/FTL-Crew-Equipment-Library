@@ -161,15 +161,15 @@ end
 ---@return table|nil
 function cel.getCrewButtonWithItem(crewId, itemName)
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
-        print("checking row ", crewContainer[GEX_CREW_ID], ", total rows", #mCrewListContainer.objects)
+        --print("checking row ", crewContainer[GEX_CREW_ID], ", total rows", #mCrewListContainer.objects)
         if (crewContainer[GEX_CREW_ID] == crewId) then
-            print("crew found, looking for button that has", itemName)
+            --print("crew found, looking for button that has", itemName)
             for _, iButton in ipairs(crewContainer.objects) do
-                print("checking for buttons ", iButton.className)
+                --print("checking for buttons ", iButton.className)
                 if (iButton.className == "inventoryButton") then--todo expose these values
-                    print("Item is", iButton.item)
+                    --print("Item is", iButton.item)
                     if (iButton.item) then
-                        print("Name is", iButton.item.name, "checking against", itemName)
+                        --print("Name is", iButton.item.name, "checking against", itemName)
                         if iButton.item.name == itemName then
                             return iButton
                         end
@@ -330,11 +330,11 @@ end
 --Id of crew to check, filter function to use, if you need only empty buttons.
 local function getCrewButton(crewId, item, requireEmpty)
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
-        print("checking row ", crewContainer[GEX_CREW_ID])
+        --print("checking row ", crewContainer[GEX_CREW_ID])
         if (crewContainer[GEX_CREW_ID] == crewId) then
-            print("crew found, looking for button that can hold", item.itemType)
+            --print("crew found, looking for button that can hold", item.itemType)
             for _, iButton in ipairs(crewContainer.objects) do
-                print("checking for buttons ", iButton.className)
+                --print("checking for buttons ", iButton.className)
                 if (iButton.className == "inventoryButton") then--todo expose these values
                     if (iButton.allowedItemsFunction(item)) then
                         if requireEmpty then
@@ -385,7 +385,7 @@ local function loadPersistedEquipment()
         --print("index ", generationTableIndex)
         local item = mEquipmentGenerationTable[generationTableIndex]()
         local position = Hyperspace.metaVariables[KEY_EQUIPMENT_ASSIGNMENT..i]
-        print("custom loading", item.name, i)
+        --print("custom loading", item.name, i)
         item.onLoad(item, i)
         --print("loading ", item.name, " genIndx ", item.generating_index, " slot ", position)
         if position == nil then 
@@ -647,12 +647,12 @@ function gex_give_random_item(includeSecrets)
     local genIndex = math.random(1, #mEquipmentGenerationTable)
     if not includeSecrets then
         while #lwl.getNewElements({genIndex}, mSecretIndices) == 0 do
-            print("Rolled a secret, rerolling", genIndex)
+            --print("Rolled a secret, rerolling", genIndex)
             genIndex = math.random(1, #mEquipmentGenerationTable)
         end
-        print("Found something that was not a secret", genIndex)
+        --print("Found something that was not a secret", genIndex)
     else
-        print("Found something that could be a secret", genIndex)
+        --print("Found something that could be a secret", genIndex)
     end
     
     return gex_give_item(genIndex)
