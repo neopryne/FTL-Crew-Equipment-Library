@@ -1,0 +1,19 @@
+<metadata>
+  <title><![CDATA[ Crew Equipment Library ]]></title>
+  <threadUrl><![CDATA[https://github.com/neopryne/FTL-Crew-Equipment-Library]]></threadUrl>
+  <author><![CDATA[ Limrix ]]></author>
+  <version><![CDATA[ 0.4 ]]></version>
+  <description>
+<![CDATA[
+# Crew Equipment Library
+Adds a tab that can hold items you can give to your crew.
+
+Don't patch this unless you're also patching something that uses it, otherwise it will just waste clock cycles.
+
+Thanks to Arc for the tab assets!
+
+### Requirements:
+[Lightweight Lua](https://github.com/neopryne/lightweight-lua) 0.8+
+]]>
+  </description>
+</metadata>
