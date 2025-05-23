@@ -41,7 +41,7 @@ local TYPE_ANY = "Any"
 local TYPE_SPACER = "Spacer"
 local EQUIPMENT_ICON_SIZE = 30
 local GEX_CREW_ID = "GEX_crewId"
-local ERROR_RENDER_FUNCTION = lwui.spriteRenderFunction("items/CEL_ERROR.png") --todo add
+local ERROR_RENDER_FUNCTION = lwui.spriteRenderFunction("items/CEL_ERROR.png")
 
 --local INVENTORY_BUTTON_PREFIX = "inventory_button_"
 local NO_ITEM_SELECTED_TEXT = "--- None Selected ---"
@@ -111,6 +111,9 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
         error("Equipment with name "..name.." already exists!  All items must have unique names for this library to work.")
     end
     cel.mNameToItemIndexTable[name] = generating_index
+    if secret then
+        table.insert(mSecretIndices, generating_index)
+    end
     print("Added key", name, "value", cel.mNameToItemIndexTable[name])
     return function()
         local builtItem = lwui.buildItem(name, itemType, EQUIPMENT_ICON_SIZE, EQUIPMENT_ICON_SIZE,
@@ -120,9 +123,6 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
         builtItem.onPersist = onPersist
         builtItem.onLoad = onLoad
         cel.mItemList:append(builtItem)
-        if secret then
-            table.insert(mSecretIndices, generating_index)
-        end
         --print("built item, item list now has ", mItemList.length)
         return builtItem
     end
@@ -624,6 +624,7 @@ end)
 function gex_give_item(index)
     local equip = mEquipmentGenerationTable[index]()
     addToInventory(equip)
+    Hyperspace.Sounds:PlaySoundMix("levelup", -1, false)
     return equip
 end
 
@@ -641,6 +642,8 @@ function gex_remove_all_items()
     resetPersistedValues()
 end
 
+---@param includeSecrets boolean
+---@return table|nil
 function gex_give_random_item(includeSecrets)
     if #mEquipmentGenerationTable == 0 then return end
     --todo avoid the secret stuff, then I can have my tiered up items and eat them too.
@@ -658,21 +661,47 @@ function gex_give_random_item(includeSecrets)
     return gex_give_item(genIndex)
 end
 
+local mGuaranteedEventTable = {}
+cel.ITEM_ANY = "CEL_ANY_ITEM"
+
+local function appendEventText(event, text)
+    event.text.data = event.text.data.."\n"..text
+end
+
 --[[
 After winning a battle, a chance to give one item.  Scales with TopScore.sector.  
 --]]
 script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
-    local itemChance = 0
-    itemChance = itemChance + (event.stuff.scrap * .005)
-    itemChance = itemChance + (event.stuff.fuel * .01)
-    itemChance = itemChance + (event.stuff.drones * .026)
-    itemChance = itemChance + (event.stuff.missiles * .023)
-    itemChance = itemChance * mGlobal:GetScoreKeeper().currentScore.sector * .25
-    
-    if (math.random() < itemChance) then
-        local equip = gex_give_random_item()
-        event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
-        event.text.data = event.text.data.."\nUpon closer inspection, some of the scrap is actually a "..equip.name.."!"
+    local autoItemList = mGuaranteedEventTable[event.eventName]
+    if autoItemList then
+        for _,itemName in ipairs(autoItemList) do
+            local item
+            if itemName == cel.ITEM_ANY then
+                item = gex_give_random_item(false)
+            else
+                item = gex_give_item(cel.mNameToItemIndexTable[itemName])
+            end
+            if item then
+                appendEventText(event, "Obtained "..item.name)
+            else
+                error("Tried to create unregistered item "..itemName.."! The mod that adds it is likely not installed.")
+            end
+        end
+    else --Do the usual method of awarding items.
+        local itemChance = 0
+        itemChance = itemChance + (event.stuff.scrap * .005)
+        itemChance = itemChance + (event.stuff.fuel * .01)
+        itemChance = itemChance + (event.stuff.drones * .026)
+        itemChance = itemChance + (event.stuff.missiles * .023)
+        itemChance = itemChance * mGlobal:GetScoreKeeper().currentScore.sector * .25
+        
+        if (math.random() < itemChance) then
+            local equip = gex_give_random_item(false)
+            if equip then
+                event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
+                appendEventText(event, "Upon closer inspection, some of the scrap is actually a "..equip.name.."!")
+            end
+        end
     end
     --print("itemChancepre", itemChance)
     --print("itemChance", itemChance)
@@ -683,6 +712,17 @@ script.on_game_event("START_BEACON_REAL", false, function()
 
 
 ---------------------Things with Dependencies-----------------------------------
+
+---Mark an event to always give an item.  Appends "Obtained "..item.name to the event.  If you want more than than, change the text yourself in lua or xml.
+---@param itemName string "ANY" if item should be random, or the item name to specify one
+---@param eventName string event.eventName of the event to give the item in
+function cel.addGuaranteedItemEvent(eventName, itemName)
+    if not mGuaranteedEventTable[eventName] then
+        mGuaranteedEventTable[eventName] = {}
+    end
+    table.insert(mGuaranteedEventTable[eventName], itemName)
+end
+
 --In the crew loop, each crew will check the items assigned to them and call their onTick functions, (pass themselves in?)
 --It is the job of the items to do everything wrt their functionality.
 --"Cursed" items that can't be unequipped
@@ -700,5 +740,3 @@ script.on_game_event("START_BEACON_REAL", false, function()
     anim.position = Hyperspace.Pointf(400, 0)
     anim:OnRender(1f, Graphics.GL_Color(1, 1, 1, 1), false)--]]
 
---uh, a function for selling these??  curently does not exist.  low priority but would be nice integration
---not any time soon,
