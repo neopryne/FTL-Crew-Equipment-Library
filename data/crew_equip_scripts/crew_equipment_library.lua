@@ -397,7 +397,8 @@ local function loadPersistedEquipment()
         else
             item.fromLoad = true
             if not addToCrew(item, position) then
-                lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position)
+                lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position..", placing in inventory.")
+                addToInventory(item)
             end
         end
         --print("loaded item ", item.name, position)
