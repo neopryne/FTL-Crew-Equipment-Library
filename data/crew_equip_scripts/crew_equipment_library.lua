@@ -105,7 +105,7 @@ local function generateStandardVisibilityFunction(tabName, subtabIndex)
 end
 local tabOneStandardVisibility = generateStandardVisibilityFunction(ENHANCEMENTS_TAB_NAME, EQUIPMENT_SUBTAB_INDEX)
 
-local function buildItemBuilder(name, itemType, renderFunction, description, onCreate, onTick, onEquip, onRemove, onPersist, onLoad, sellValue, secret)
+local function buildItemBuilder(name, itemType, renderFunction, description, onCreate, onTick, onEquip, onRemove, onPersist, onLoad, onRender, sellValue, secret)
     local generating_index = #mEquipmentGenerationTable + 1
     if cel.mNameToItemIndexTable[name] then
         error("Equipment with name "..name.." already exists!  All items must have unique names for this library to work.")
@@ -122,9 +122,13 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
         builtItem.sellValue = sellValue
         builtItem.onPersist = onPersist
         builtItem.onLoad = onLoad
-        cel.mItemList:append(builtItem)
+        builtItem.onRender = onRender
+        if builtItem.assigned_slot ~= -2 then --Item was removed on create
+            cel.mItemList:append(builtItem)
+            return builtItem
+        end
         --print("built item, item list now has ", mItemList.length)
-        return builtItem
+        return nil
     end
 end
 ------------------------------------API----------------------------------------------------------
@@ -142,10 +146,11 @@ local function buildBlueprintFromDefinition(itemDef)--45 c cvgbhbhyh bbb
     local onEquip = lwl.setIfNil(itemDef.onEquip, NOOP)
     local onRemove = lwl.setIfNil(itemDef.onRemove, NOOP)
     local onPersist = lwl.setIfNil(itemDef.onPersist, NOOP)
+    local onRender = lwl.setIfNil(itemDef.onRender, NOOP)
     local onLoad = lwl.setIfNil(itemDef.onLoad, NOOP)
     local sellValue = lwl.setIfNil(itemDef.sellValue, 5)
     local secret = lwl.setIfNil(itemDef.secret, false)
-    return buildItemBuilder(name, itemType, renderFunction, description, onCreate, onTick, onEquip, onRemove, onPersist, onLoad, sellValue, secret)
+    return buildItemBuilder(name, itemType, renderFunction, description, onCreate, onTick, onEquip, onRemove, onPersist, onLoad, onRender, sellValue, secret)
 end
 
 ---Required fields: name, itemType, renderFunction, description.
@@ -226,8 +231,11 @@ cel.persistEquipment = function()
     local successes = 0
     for i=1,numEquipment do
         local equipment = cel.mItemList:get(i)
-        if (equipment.generating_index == nil) or (equipment.assigned_slot == nil) then
-            print(TAG, "ERROR: Could not persist "..equipment.name..": incomplete values.", equipment.generating_index, equipment.assigned_slot)
+        if (equipment.assigned_slot == nil) then --todo this shouldn't be possible, I should find how this is happening.
+            equipment.assigned_slot = -1
+        end
+        if (equipment.generating_index == nil) then
+            print(TAG, "ERROR: Could not persist "..equipment.name..": incomplete values. Generating index:", equipment.generating_index, "Position:", equipment.assigned_slot)
             --deleteItem(nil, equipment) breaks badly
             --print(equipment.generating_index, equipment.assigned_slot)
         else
@@ -247,7 +255,9 @@ end
 ---@param item table
 function cel.deleteItem(button, item)
     itemTryUnequipPrevious(item)
-    cel.mItemList:remove(item._index)
+    if item._index then
+        cel.mItemList:remove(item._index)
+    end
     if button then
         button.item = nil
     end
@@ -311,6 +321,7 @@ end
 
 --Does not remove item from previous location
 local function addToInventory(item)
+    if not item then return true end
     local oldSlotValue = item.assigned_slot
     for _, iButton in ipairs(mInventoryButtons) do
         if (iButton.addItem(item)) then --implicitly calls buttonAddInventory
@@ -384,21 +395,23 @@ local function loadPersistedEquipment()
         local generationTableIndex = Hyperspace.metaVariables[KEY_EQUIPMENT_GENERATING_INDEX..i]
         --print("index ", generationTableIndex)
         local item = mEquipmentGenerationTable[generationTableIndex]()
-        local position = Hyperspace.metaVariables[KEY_EQUIPMENT_ASSIGNMENT..i]
-        --print("custom loading", item.name, i)
-        item.onLoad(item, i)
-        --print("loading ", item.name, " genIndx ", item.generating_index, " slot ", position)
-        if position == nil then 
-            position = -2
-            item.assigned_slot = -2
-        end
-        if position == -1 then
-            addToInventory(item)
-        else
-            item.fromLoad = true
-            if not addToCrew(item, position) then
-                lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position..", placing in inventory.")
+        if item then
+            local position = Hyperspace.metaVariables[KEY_EQUIPMENT_ASSIGNMENT..i]
+            --print("custom loading", item.name, i)
+            item.onLoad(item, i)
+            --print("loading ", item.name, " genIndx ", item.generating_index, " slot ", position)
+            if position == nil then 
+                position = -2
+                item.assigned_slot = -2
+            end
+            if position == -1 then
                 addToInventory(item)
+            else
+                item.fromLoad = true
+                if not addToCrew(item, position) then
+                    lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position..", placing in inventory.")
+                    addToInventory(item)
+                end
             end
         end
         --print("loaded item ", item.name, position)
@@ -433,16 +446,33 @@ local function buildIButton(filterFunction, renderFunction, itemTypes, crewId)
     return standardButton
 end
 
+local function inventoryButtonWeaponDefault(object)
+    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(12.8/100, 1/100, 5/100, 1), Graphics.GL_Color(63/255, 55/255, 60/255, 1))
+end
+
+local function inventoryButtonArmorDefault(object)
+    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(1/100, 7/100, 12/100, 1), Graphics.GL_Color(55/255, 60/255, 67/255, 1))
+end
+
+local function inventoryButtonToolDefault(object)
+    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(1.3/100, 12.8/100, 4.1/100, 1), Graphics.GL_Color(50/255, 63/255, 55/255, 1))
+end
+
 local function buildSingleButton(crewmem, buttonType)
     local object
     local crewId = crewmem.extend.selfId
     if buttonType == TYPE_NONE then
         object = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility,
             lwui.inventoryButtonDefaultDisabled)
-    elseif buttonType == cel.TYPE_WEAPON or buttonType == cel.TYPE_ARMOR or buttonType == cel.TYPE_TOOL then
+    elseif buttonType == cel.TYPE_WEAPON then
         object = buildIButton(generateStandardFilterFunction(buttonType),
-            lwui.inventoryButtonDefault, buttonType, crewId)
-        --todo if limit
+            inventoryButtonWeaponDefault, buttonType, crewId)
+    elseif buttonType == cel.TYPE_ARMOR then
+        object = buildIButton(generateStandardFilterFunction(buttonType),
+            inventoryButtonArmorDefault, buttonType, crewId)
+    elseif buttonType == cel.TYPE_TOOL then
+        object = buildIButton(generateStandardFilterFunction(buttonType),
+            inventoryButtonToolDefault, buttonType, crewId)
     elseif buttonType == TYPE_ANY then
         object = buildIButton(inventoryFilterFunctionAny, lwui.inventoryButtonFadedGayDefault, buttonType, crewId)
         object[GEX_CREW_ID] = crewId
@@ -526,13 +556,32 @@ local function tickEquipment()
         --print("ticking", crewmem:GetName(), "has ", #equips, "equipment")
         for _,item in ipairs(equips) do
             --print("ticking", crewmem:GetName(), crewmem.extend.selfId, "'s", item.name)
-            item.onTick(item, crewmem)
+            if not crewmem.bDead then --Don't tick items on dead crew. (cloning, etc)
+                item.onTick(item, crewmem)
+            end
+        end
+    end
+end
+
+local function renderEquipment()
+    local ownshipManager = Hyperspace.ships(0)
+    if not ownshipManager then return end
+    local playerCrew = lwl.getAllMemberCrewFromFactory(lwl.filterOwnshipTrueCrew)
+    for _,crewmem in ipairs(playerCrew) do
+        local equips = getCrewEquipment(crewmem)
+        --print("ticking", crewmem:GetName(), "has ", #equips, "equipment")
+        for _,item in ipairs(equips) do
+            --print("ticking", crewmem:GetName(), crewmem.extend.selfId, "'s", item.name)
+            if not crewmem.bDead then --Don't tick items on dead crew. (cloning, etc)
+                item.onRender(item, crewmem)
+            end
         end
     end
 end
 
 script.on_internal_event(Defines.InternalEvents.ON_TICK, function()
     if not lwce.isInitialized() then return end
+    renderEquipment()
     if not lwl.isPaused() then
         --[[ formula to turn ticks into 1/32 second
         16 / speedFactor = ticks per second

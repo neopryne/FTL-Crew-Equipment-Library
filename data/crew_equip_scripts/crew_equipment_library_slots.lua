@@ -20,7 +20,9 @@ local SLOTS_NOWEAPON = {TYPE_NONE, TYPE_ARMOR, TYPE_TOOL}
 local SLOTS_NOTOOL = {TYPE_WEAPON, TYPE_ARMOR, TYPE_NONE}
 local SLOTS_NOARMOR = {TYPE_WEAPON, TYPE_NONE, TYPE_TOOL}
 local SLOTS_ONLYWEAPON = {TYPE_WEAPON, TYPE_NONE, TYPE_NONE}
-local SLOTS_ANYTWO = {TYPE_SPACER, TYPE_ANY, TYPE_ANY} --todo this is the hardest because it requires additonal logic, mostly for rendering 
+local SLOTS_TWOWEAPON = {TYPE_WEAPON, TYPE_WEAPON, TYPE_NONE}
+local SLOTS_ALLWEAPON = {TYPE_WEAPON, TYPE_WEAPON, TYPE_WEAPON}
+local SLOTS_ANYTWO = {TYPE_SPACER, TYPE_ANY, TYPE_ANY}
 local SLOTS_WILDCARD = {TYPE_ANY, TYPE_ANY, TYPE_ANY}
 local CREW_STAT_TABLE
 
@@ -78,10 +80,10 @@ CREW_STAT_TABLE = {
     unique_ellie_stephan=SLOTS_ANYTWO,
     unique_ellie_lvl1=SLOTS_ONLYWEAPON,
     unique_ellie_lvl2=SLOTS_ONLYWEAPON,
-    unique_ellie_lvl3=SLOTS_ONLYWEAPON,
-    unique_ellie_lvl4=SLOTS_ONLYWEAPON,
-    unique_ellie_lvl5=SLOTS_ONLYWEAPON,
-    unique_ellie_lvl6=SLOTS_ONLYWEAPON,
+    unique_ellie_lvl3=SLOTS_TWOWEAPON,
+    unique_ellie_lvl4=SLOTS_TWOWEAPON,
+    unique_ellie_lvl5=SLOTS_TWOWEAPON,
+    unique_ellie_lvl6=SLOTS_ALLWEAPON,
     human_angel=SLOTS_WILDCARD,
     --Orchid
     orchid=SLOTS_NOWEAPON,
