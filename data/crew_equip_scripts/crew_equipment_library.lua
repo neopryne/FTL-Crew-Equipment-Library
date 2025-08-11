@@ -51,6 +51,14 @@ local KEY_NUM_EQUIPS = "GEX_CURRENT_EQUIPMENT_TOTAL"
 local KEY_EQUIPMENT_GENERATING_INDEX = "GEX_EQUIPMENT_GENERATING_INDEX_"
 local KEY_EQUIPMENT_ASSIGNMENT = "GEX_EQUIPMENT_ASSIGNMENT_"
 
+cel.ITEM_SOLD_EVENT = "ITEM_SOLD" --Value is the sold item.
+cel.ITEM_OBTAINED_EVENT = "ITEM_OBTAINED" --Value is the obtained item.
+local EVENT_LIST = {cel.ITEM_SOLD_EVENT, cel.ITEM_OBTAINED_EVENT}
+local mListeners = {}
+for _,event in ipairs(EVENT_LIST) do
+    mListeners[event] = {}
+end
+
 --Do not modify these, actually maybe add a copy getter or something.
 cel.mNameToItemIndexTable = {}
 cel.mItemList = lwsil.SelfIndexingList:new()
@@ -83,6 +91,13 @@ local mScaledLocalTime = 0
 local inventoryRows = 5
 local inventoryColumns = 6
 
+
+local function fireEvent(eventName, value)
+    local listenerList = mListeners[eventName]
+    for _,listener in ipairs(listenerList) do
+        listener.callback(value)
+    end
+end
 
 local function itemTryUnequipPrevious(item)
     if item.assigned_slot ~= nil and item.assigned_slot >= 0 then
@@ -123,6 +138,7 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
         builtItem.onPersist = onPersist
         builtItem.onLoad = onLoad
         builtItem.onRender = onRender
+        fireEvent(cel.ITEM_OBTAINED_EVENT, builtItem)
         if builtItem.assigned_slot ~= -2 then --Item was removed on create
             cel.mItemList:append(builtItem)
             return builtItem
@@ -265,6 +281,9 @@ function cel.deleteItem(button, item)
     cel.persistEquipment()
 end
 
+function cel.registerListener(eventName, callback)
+    table.insert(mListeners[eventName], {callback=callback})
+end
 ------------------------------------END API----------------------------------------------------------
 ------------------------------------INVENTORY FILTER FUNCTIONS----------------------------------------------------------
 local function inventoryFilterFunctionAny(item)
@@ -316,6 +335,7 @@ local function trashItem(button, item) --From scrap it came, and to scrap it can
     Hyperspace.Sounds:PlaySoundMix("buy", -1, false)
     mItemsSold = mItemsSold + 1
     mItemsSoldValue = mItemsSoldValue + item.sellValue
+    fireEvent(cel.ITEM_SOLD_EVENT, item)
     cel.deleteItem(button, item)
 end
 
@@ -408,8 +428,11 @@ local function loadPersistedEquipment()
                 addToInventory(item)
             else
                 item.fromLoad = true
-                if not addToCrew(item, position) then
+                if not addToCrew(item, position) then --really ugly fallback code
                     lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position..", placing in inventory.")
+                    if position then
+                        item.onRemove(item, lwl.getCrewById(position))
+                    end
                     addToInventory(item)
                 end
             end
@@ -556,7 +579,7 @@ local function tickEquipment()
         --print("ticking", crewmem:GetName(), "has ", #equips, "equipment")
         for _,item in ipairs(equips) do
             --print("ticking", crewmem:GetName(), crewmem.extend.selfId, "'s", item.name)
-            if not crewmem.bDead then --Don't tick items on dead crew. (cloning, etc)
+            if (not crewmem.bDead and crewmem.health.first > 0) then --Don't tick items on dead crew. (cloning, etc)
                 item.onTick(item, crewmem)
             end
         end
@@ -714,10 +737,6 @@ end
 local mGuaranteedEventTable = {}
 cel.ITEM_ANY = "CEL_ANY_ITEM"
 
-local function appendEventText(event, text)
-    event.text.data = event.text.data.."\n"..text
-end
-
 --[[
 After winning a battle, a chance to give one item.  Scales with TopScore.sector.  
 --]]
@@ -732,7 +751,7 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
                 item = gex_give_item(cel.mNameToItemIndexTable[itemName])
             end
             if item then
-                appendEventText(event, "Obtained "..item.name)
+                lwl.appendEventText(event, "\nObtained "..item.name)
             else
                 error("Tried to create unregistered item "..itemName.."! The mod that adds it is likely not installed.")
             end
@@ -749,7 +768,7 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
             local equip = gex_give_random_item(false)
             if equip then
                 event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
-                appendEventText(event, "Upon closer inspection, some of the scrap is actually a "..equip.name.."!")
+                lwl.appendEventText(event, "\nUpon closer inspection, some of the scrap is actually a "..equip.name.."!")
             end
         end
     end
