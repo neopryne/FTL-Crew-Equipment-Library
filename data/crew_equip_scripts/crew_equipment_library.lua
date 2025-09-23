@@ -31,6 +31,7 @@ crew observer breaks sometimes and there's a memory leak, possibly in effects.
 ----------------------------------------------------DEFINES----------------------
 local TAG = "LW Crew Equips"
 local function NOOP() end
+local updateGui
 local ENHANCEMENTS_TAB_NAME = "crew_enhancements"
 local EQUIPMENT_SUBTAB_INDEX = 1
 cel.TYPE_WEAPON = "Weapon"
@@ -366,7 +367,7 @@ local function getCrewButton(crewId, item, requireEmpty)
             --print("crew found, looking for button that can hold", item.itemType)
             for _, iButton in ipairs(crewContainer.objects) do
                 --print("checking for buttons ", iButton.className)
-                if (iButton.className == "inventoryButton") then--todo expose these values
+                if (iButton.className == "inventoryButton") then--todo expose these values (added in lwl 0.14)
                     if (iButton.allowedItemsFunction(item)) then
                         if requireEmpty then
                             if not iButton.item then
@@ -561,6 +562,30 @@ local function constructEnhancementsLayout()
     lwui.addTopLevelObject(trashHeader, "TABBED_WINDOW")
 end
 
+--This breaks if I reorder the things in the crew row.
+local function updateGuiNames()
+    local i = 1
+    for _, crewContainer in ipairs(mCrewListContainer.objects) do
+        if i > 1 then
+            local crewmem = lwl.getCrewById(crewContainer[GEX_CREW_ID])
+            local NAME = crewmem:GetName()
+            local nameBox = crewContainer.objects[2]
+            print("Updated names.")
+            if nameBox.className == "fixedTextBox" then --todo lwui.classNames.FIXED_TEXT_BOX
+                nameBox.text = NAME
+            end
+        end
+        i = i + 1
+    end
+end
+
+---Called when you open the gui, to update crew info in case their names changed.
+---Actually, I could probably just have the row store their crew id instead and
+---Yeah I should do that.  If it doesn't already.
+updateGui = function ()
+    updateGuiNames()
+end
+
 --[[
 Number of equipment currently in use
 equipment_N: gives the index of the equipment generating function array used to make this equipment.
@@ -666,6 +691,7 @@ script.on_internal_event(Defines.InternalEvents.ON_TICK, function()
     mCrewChangeObserver.saveLastSeenState()
 end)
 
+
 script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
     if not mSetupFinished then return end
@@ -688,6 +714,7 @@ end, function(tabName)
         if not (mTabbedWindow == ENHANCEMENTS_TAB_NAME) then
             mDescriptionHeader.text = NO_ITEM_SELECTED_TEXT
             mDescriptionTextBox.text = ""
+            updateGui()
         end
     end
     mTabbedWindow = tabName
@@ -719,7 +746,7 @@ end
 ---@return table|nil
 function gex_give_random_item(includeSecrets)
     if #mEquipmentGenerationTable == 0 then return end
-    --todo avoid the secret stuff, then I can have my tiered up items and eat them too.
+    --todo avoid the secret stuff, then I can eat my tiered up items and have them too.
     local genIndex = math.random(1, #mEquipmentGenerationTable)
     if not includeSecrets then
         while #lwl.getNewElements({genIndex}, mSecretIndices) == 0 do
