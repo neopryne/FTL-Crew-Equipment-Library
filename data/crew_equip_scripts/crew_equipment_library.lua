@@ -188,7 +188,7 @@ function cel.getCrewButtonWithItem(crewId, itemName)
         if (crewContainer[GEX_CREW_ID] == crewId) then
             --print("crew found, looking for button that has", itemName)
             for _, iButton in ipairs(crewContainer.objects) do
-                --print("checking for buttons ", iButton.className)
+                --print("checking for buttons ", iButton.className, "against", lwui.classNames.INVENTORY_BUTTON)
                 if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
                     --print("Item is", iButton.item)
                     if (iButton.item) then
@@ -229,9 +229,9 @@ local function getCrewEquipment(crewmem)
         if (crewContainer[GEX_CREW_ID] == crewmem.extend.selfId) then
             --print("crew found")
             for _, iButton in ipairs(crewContainer.objects) do
-                --print("checking ", iButton.className)
+                --print("checking ", iButton.className, "against", lwui.classNames.INVENTORY_BUTTON)
                 if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
-                    --print("item ", iButton.item)
+                    --print("item is ", iButton.item)
                     if (iButton.item ~= nil) then
                         table.insert(equipment, iButton.item)
                     end
@@ -386,10 +386,12 @@ local function getCrewButton(crewId, item, requireEmpty)
 end
 
 local function addToCrew(item, crewId) --find the button to add it to and call that.
+    --print("addtocrew")
     --needs to iterate through all crew buttons.
     local requireEmpty = true
     local button = getCrewButton(crewId, item, requireEmpty)
     if not button then return false end
+    --print("addtocrew found button", crewId, item.name)
     return button.addItem(item) --todo these two are failing with nil stuff
 end
 
@@ -397,7 +399,6 @@ local function buttonAddToCrew(button, item)
     --print("buttonaddToCrew")
     itemTryUnequipPrevious(item)
     local crewmem = lwl.getCrewById(button[GEX_CREW_ID])
-    --print("added ", item.name, " to ", crewmem:GetName())
     if (item.fromLoad) then --Do the unequip that should have happened when we quit the game.
         item.fromLoad = nil
         item.onRemove(item, crewmem)
@@ -408,6 +409,8 @@ local function buttonAddToCrew(button, item)
         Hyperspace.Sounds:PlaySoundMix("upgradeSystem", -1, false)
     end
     cel.persistEquipment()
+    --print("added ", item.name, " to ", crewmem:GetName())
+    --print("Button now contains", button.item.name)
 end
 
 local function loadPersistedEquipment()
@@ -533,6 +536,7 @@ end
 
 local function constructEnhancementsLayout()
     --Left hand side
+    --print("building crew layout")
     mCrewListContainer = buildCrewEquipmentScrollBar()
     local crewListScrollWindow = lwui.buildVerticalScrollContainer(341, mEquipmentTabTop, 290, 370, tabOneStandardVisibility, mCrewListContainer, lwui.defaultScrollBarSkin)
     lwui.addTopLevelObject(crewListScrollWindow, LAYER_TABBED_WINDOW)
@@ -618,9 +622,9 @@ local function renderEquipment()
     local playerCrew = lwl.getAllMemberCrewFromFactory(lwl.filterOwnshipTrueCrew)
     for _,crewmem in ipairs(playerCrew) do
         local equips = getCrewEquipment(crewmem)
-        --print("ticking", crewmem:GetName(), "has ", #equips, "equipment")
+        --print("rendering", crewmem:GetName(), "has ", #equips, "equipment")
         for _,item in ipairs(equips) do
-            --print("ticking", crewmem:GetName(), crewmem.extend.selfId, "'s", item.name)
+            --print("rendering", crewmem:GetName(), crewmem.extend.selfId, "'s", item.name)
             if not crewmem.bDead then --Don't tick items on dead crew. (cloning, etc)
                 item.onRender(item, crewmem)
             end
