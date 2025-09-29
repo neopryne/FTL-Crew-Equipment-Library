@@ -189,7 +189,7 @@ function cel.getCrewButtonWithItem(crewId, itemName)
             --print("crew found, looking for button that has", itemName)
             for _, iButton in ipairs(crewContainer.objects) do
                 --print("checking for buttons ", iButton.className)
-                if (iButton.className == "inventoryButton") then--todo expose these values
+                if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
                     --print("Item is", iButton.item)
                     if (iButton.item) then
                         --print("Name is", iButton.item.name, "checking against", itemName)
@@ -230,7 +230,7 @@ local function getCrewEquipment(crewmem)
             --print("crew found")
             for _, iButton in ipairs(crewContainer.objects) do
                 --print("checking ", iButton.className)
-                if (iButton.className == lwui.INVENTORY_BUTTON) then
+                if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
                     --print("item ", iButton.item)
                     if (iButton.item ~= nil) then
                         table.insert(equipment, iButton.item)
@@ -322,7 +322,7 @@ local function resetInventory()
     
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
         for _, iButton in ipairs(crewContainer.objects) do
-            if (iButton.className == lwui.INVENTORY_BUTTON) then
+            if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
                 clearIButton(iButton)
             end
         end
@@ -368,7 +368,7 @@ local function getCrewButton(crewId, item, requireEmpty)
             --print("crew found, looking for button that can hold", item.itemType)
             for _, iButton in ipairs(crewContainer.objects) do
                 --print("checking for buttons ", iButton.className)
-                if (iButton.className == lwui.INVENTORY_BUTTON) then--todo expose these values (added in lwl 0.14)
+                if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
                     if (iButton.allowedItemsFunction(item)) then
                         if requireEmpty then
                             if not iButton.item then
@@ -510,10 +510,6 @@ local function buildSingleButton(crewmem, buttonType)
 end
 
 local function buildCrewRow(crewmem)
-    local species = crewmem:GetSpecies() --todo this can change, so you need to recheck this on updateGui.
-    --fixedTextBox
-
-
     --todo replace red square with crew image.  For now, overlay crew race.
     local animPlaceholder = lwui.buildFixedTextBox(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)), 9)
     --local anim = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)))
@@ -575,11 +571,10 @@ local function updateGuiNames()
         local crewmem = lwl.getCrewById(crewContainer[GEX_CREW_ID])
         local speciesBox = crewContainer.objects[1]
         local nameBox = crewContainer.objects[2]
-        --print("Updated names.")
-        if nameBox.className == lwui.FIXED_TEXT_BOX then
+        if nameBox.className == lwui.classNames.FIXED_TEXT_BOX then
             nameBox.text = crewmem:GetName()
         end
-        if speciesBox.className == lwui.FIXED_TEXT_BOX then
+        if speciesBox.className == lwui.classNames.FIXED_TEXT_BOX then
             speciesBox.text = crewmem:GetSpecies()--Orchid Floral?
         end
     end
