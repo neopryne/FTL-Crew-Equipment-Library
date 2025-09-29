@@ -7,9 +7,9 @@ Usage:
 See buildBlueprintFromDefinition for more optional arguments.  Item images should be 30x30 pngs, and look better with at least some transparency.
 ]]
 
-if (not mods) then mods = {} end
-mods.crew_equipment_library = {}
-local cel = mods.crew_equipment_library
+ if (not mods) then mods = {} end
+ mods.crew_equipment_library = {}
+ local cel = mods.crew_equipment_library
 local cels = mods.crew_equipment_library_slots
 local lwl = mods.lightweight_lua
 local lwui = mods.lightweight_user_interface
@@ -33,6 +33,7 @@ local TAG = "LW Crew Equips"
 local function NOOP() end
 local updateGui
 local ENHANCEMENTS_TAB_NAME = "crew_enhancements"
+local LAYER_TABBED_WINDOW = "TABBED_WINDOW"
 local EQUIPMENT_SUBTAB_INDEX = 1
 cel.TYPE_WEAPON = "Weapon"
 cel.TYPE_ARMOR = "Armor"
@@ -229,7 +230,7 @@ local function getCrewEquipment(crewmem)
             --print("crew found")
             for _, iButton in ipairs(crewContainer.objects) do
                 --print("checking ", iButton.className)
-                if (iButton.className == "inventoryButton") then
+                if (iButton.className == lwui.INVENTORY_BUTTON) then
                     --print("item ", iButton.item)
                     if (iButton.item ~= nil) then
                         table.insert(equipment, iButton.item)
@@ -321,7 +322,7 @@ local function resetInventory()
     
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
         for _, iButton in ipairs(crewContainer.objects) do
-            if (iButton.className == "inventoryButton") then
+            if (iButton.className == lwui.INVENTORY_BUTTON) then
                 clearIButton(iButton)
             end
         end
@@ -367,7 +368,7 @@ local function getCrewButton(crewId, item, requireEmpty)
             --print("crew found, looking for button that can hold", item.itemType)
             for _, iButton in ipairs(crewContainer.objects) do
                 --print("checking for buttons ", iButton.className)
-                if (iButton.className == "inventoryButton") then--todo expose these values (added in lwl 0.14)
+                if (iButton.className == lwui.INVENTORY_BUTTON) then--todo expose these values (added in lwl 0.14)
                     if (iButton.allowedItemsFunction(item)) then
                         if requireEmpty then
                             if not iButton.item then
@@ -509,12 +510,18 @@ local function buildSingleButton(crewmem, buttonType)
 end
 
 local function buildCrewRow(crewmem)
-    local anim = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)))
+    local species = crewmem:GetSpecies() --todo this can change, so you need to recheck this on updateGui.
+    --fixedTextBox
+
+
+    --todo replace red square with crew image.  For now, overlay crew race.
+    local animPlaceholder = lwui.buildFixedTextBox(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)), 9)
+    --local anim = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)))
     local nameText = lwui.buildFixedTextBox(0, 0, mCrewLineNameWidth, mCrewLineHeight, tabOneStandardVisibility, NOOP, mCrewLineTextSize)
     nameText.text = crewmem:GetName()
     
     local horizContainer = lwui.buildHorizontalContainer(3, 0, 100, mCrewLineHeight, tabOneStandardVisibility, NOOP,
-        {anim, nameText}, true, false, mCrewLinePadding)
+        {animPlaceholder, nameText}, true, false, mCrewLinePadding)
     horizContainer[GEX_CREW_ID] = crewmem.extend.selfId
     
     local slotsDefinition = cels.getCrewSlots(crewmem.extend:GetDefinition().race)
@@ -532,50 +539,49 @@ local function constructEnhancementsLayout()
     --Left hand side
     mCrewListContainer = buildCrewEquipmentScrollBar()
     local crewListScrollWindow = lwui.buildVerticalScrollContainer(341, mEquipmentTabTop, 290, 370, tabOneStandardVisibility, mCrewListContainer, lwui.defaultScrollBarSkin)
-    lwui.addTopLevelObject(crewListScrollWindow, "TABBED_WINDOW")
+    lwui.addTopLevelObject(crewListScrollWindow, LAYER_TABBED_WINDOW)
     --lwui.addTopLevelObject(ib1)
     local nameHeader = lwui.buildFixedTextBox(340, mTabTop, 260, 26, tabOneStandardVisibility, NOOP, 16)
     nameHeader.text = "       Name             Weapon Armor Tool"
-    lwui.addTopLevelObject(nameHeader, "TABBED_WINDOW")
+    lwui.addTopLevelObject(nameHeader, LAYER_TABBED_WINDOW)
     
     --Lower right corner
     mDescriptionHeader = lwui.buildFixedTextBox(645, 348, 225, 35, tabOneStandardVisibility, NOOP, 18)--TODO AALL FIX
     mDescriptionHeader.text = NO_ITEM_SELECTED_TEXT
-    lwui.addTopLevelObject(mDescriptionHeader, "TABBED_WINDOW")
+    lwui.addTopLevelObject(mDescriptionHeader, LAYER_TABBED_WINDOW)
     mDescriptionTextBox = lwui.buildDynamicHeightTextBox(0, 0, 245, 90, tabOneStandardVisibility, NOOP, 10)
     local descriptionTextScrollWindow = lwui.buildVerticalScrollContainer(643, 384, 260, 150, tabOneStandardVisibility, mDescriptionTextBox, lwui.testScrollBarSkin)
-    lwui.addTopLevelObject(descriptionTextScrollWindow, "TABBED_WINDOW")
+    lwui.addTopLevelObject(descriptionTextScrollWindow, LAYER_TABBED_WINDOW)
 
     --Upper right corner
     --It's a bunch of inventory buttons, representing how many slots you have to hold this stuff you don't have equipped currently.
     local inventoryHeader = lwui.buildFixedTextBox(622, mTabTop, 220, 26, tabOneStandardVisibility, NOOP, 14)
     inventoryHeader.text = "Inventory"
-    lwui.addTopLevelObject(inventoryHeader, "TABBED_WINDOW")
-    lwui.addTopLevelObject(buildInventoryContainer(), "TABBED_WINDOW")
+    lwui.addTopLevelObject(inventoryHeader, LAYER_TABBED_WINDOW)
+    lwui.addTopLevelObject(buildInventoryContainer(), LAYER_TABBED_WINDOW)
     local trashY = 70
     local trashX = 876
     local trashButton = lwui.buildInventoryButton("TrashItemButton", trashX, 280 + trashY, mCrewLineHeight, mCrewLineHeight,
         tabOneStandardVisibility, lwui.spriteRenderFunction("items/trash.png"), inventoryFilterFunctionAny, trashItem, NOOP)
-    lwui.addTopLevelObject(trashButton, "TABBED_WINDOW")
+    lwui.addTopLevelObject(trashButton, LAYER_TABBED_WINDOW)
     local trashHeader = lwui.buildFixedTextBox(trashX - 2, 252 + trashY, 60, 35, tabOneStandardVisibility, NOOP, 16)
     trashHeader.text = "Sell"
-    lwui.addTopLevelObject(trashHeader, "TABBED_WINDOW")
+    lwui.addTopLevelObject(trashHeader, LAYER_TABBED_WINDOW)
 end
 
 --This breaks if I reorder the things in the crew row.
 local function updateGuiNames()
-    local i = 1
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
-        if i > 1 then
-            local crewmem = lwl.getCrewById(crewContainer[GEX_CREW_ID])
-            local NAME = crewmem:GetName()
-            local nameBox = crewContainer.objects[2]
-            print("Updated names.")
-            if nameBox.className == "fixedTextBox" then --todo lwui.classNames.FIXED_TEXT_BOX
-                nameBox.text = NAME
-            end
+        local crewmem = lwl.getCrewById(crewContainer[GEX_CREW_ID])
+        local speciesBox = crewContainer.objects[1]
+        local nameBox = crewContainer.objects[2]
+        --print("Updated names.")
+        if nameBox.className == lwui.FIXED_TEXT_BOX then
+            nameBox.text = crewmem:GetName()
         end
-        i = i + 1
+        if speciesBox.className == lwui.FIXED_TEXT_BOX then
+            speciesBox.text = crewmem:GetSpecies()--Orchid Floral?
+        end
     end
 end
 

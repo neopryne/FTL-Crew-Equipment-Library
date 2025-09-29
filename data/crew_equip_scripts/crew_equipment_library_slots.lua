@@ -39,7 +39,7 @@ cels.SLOTS_ANYTWO = SLOTS_ANYTWO
 ---@param raceName string
 ---@param slots table of CELS TYPE_ values.  You can use the predefined onces or create your own.
 function cels.setRaceSlotDefinition(raceName, slots)
-    CREW_STAT_TABLE[race] = slots
+    CREW_STAT_TABLE[raceName] = slots
 end
 
 ---If not found, defaults to the standard three.  Mostly for use by CEL internally.  
