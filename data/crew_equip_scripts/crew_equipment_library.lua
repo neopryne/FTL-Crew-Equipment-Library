@@ -12,10 +12,13 @@ See buildBlueprintFromDefinition for more optional arguments.  Item images shoul
  local cel = mods.crew_equipment_library
 local cels = mods.crew_equipment_library_slots
 local lwl = mods.lightweight_lua
+local lwst = mods.lightweight_stable_time
 local lwui = mods.lightweight_user_interface
 local lwcco = mods.lightweight_crew_change_observer
 local lwsil = mods.lightweight_self_indexing_list
 local lwce = mods.lightweight_crew_effects
+local lweb = mods.lightweight_event_broadcaster
+
 lwce.RequestInitialization()
 
 if not lwl then
@@ -67,6 +70,7 @@ cel.mItemList = lwsil.SelfIndexingList:new()
 
 local mSetupFinished = false
 local mCrewChangeObserver = lwcco.createCrewChangeObserver(lwl.filterOwnshipTrueCrew)
+local mEquipmentPlayerVariableInterface = lwl.CreatePlayerVariableInterface("crew_equipment_library")
 local mCrewListContainer
 local mEquipmentGenerationTable = {}
 local mSecretIndices = {}
@@ -152,7 +156,7 @@ end
 ------------------------------------API----------------------------------------------------------
 ---@param itemDef table
 ---@return function
-local function buildBlueprintFromDefinition(itemDef)--45 c cvgbhbhyh bbb
+local function buildBlueprintFromDefinition(itemDef)
     --Required
     local name = lwl.setIfNil(itemDef.name, "FORGOT NAME!")
     local itemType = lwl.setIfNil(itemDef.itemType, cel.TYPE_WEAPON)
@@ -259,13 +263,15 @@ cel.persistEquipment = function()
         else
             successes = successes + 1
             --print("persisting ", equipment.name, " genIndx ", equipment.generating_index, " slot ", equipment.assigned_slot)
-            Hyperspace.metaVariables[KEY_EQUIPMENT_GENERATING_INDEX..successes] = equipment.generating_index
-            Hyperspace.metaVariables[KEY_EQUIPMENT_ASSIGNMENT..successes] = equipment.assigned_slot
+            mEquipmentPlayerVariableInterface.setVariable(successes, KEY_EQUIPMENT_GENERATING_INDEX, equipment.generating_index)
+            mEquipmentPlayerVariableInterface.setVariable(successes, KEY_EQUIPMENT_ASSIGNMENT, equipment.assigned_slot)
+            -- Hyperspace.playerVariables[KEY_EQUIPMENT_GENERATING_INDEX..successes] = equipment.generating_index
+            -- Hyperspace.playerVariables[KEY_EQUIPMENT_ASSIGNMENT..successes] = equipment.assigned_slot
             equipment.onPersist(equipment, successes)
         end
     end
-    Hyperspace.metaVariables[KEY_NUM_EQUIPS] = successes
-    --print("persisted ", successes , " out of ", numEquipment)
+    -- Hyperspace.playerVariables[KEY_NUM_EQUIPS] = successes
+    --print("persisted ", successes , " out of ", numEquipment) --So it says, but it keeps adding to the number of things the PVS thinks exist.
 end
 
 ---Removes the given item, blanks out the given button.
@@ -305,7 +311,8 @@ end
 --todo Gift of Equipment, one random item, starts unlocked.  Greater boon, two random items.
 
 local function resetPersistedValues()
-    Hyperspace.metaVariables[KEY_NUM_EQUIPS] = 0
+    --Hyperspace.playerVariables[KEY_NUM_EQUIPS] = 0
+    mEquipmentPlayerVariableInterface.clearAll()
 end
 
 local function clearIButton(iButton)
@@ -414,33 +421,37 @@ local function buttonAddToCrew(button, item)
 end
 
 local function loadPersistedEquipment()
-    local numEquipment = Hyperspace.metaVariables[KEY_NUM_EQUIPS]
+    local numEquipment = mEquipmentPlayerVariableInterface.getCount()  --Hyperspace.playerVariables[KEY_NUM_EQUIPS]
     --print("loading ", numEquipment, " items")
     for i=1,numEquipment do
-        local generationTableIndex = Hyperspace.metaVariables[KEY_EQUIPMENT_GENERATING_INDEX..i]
+        local generationTableIndex = mEquipmentPlayerVariableInterface.getVariable(i, KEY_EQUIPMENT_GENERATING_INDEX) --Hyperspace.playerVariables[KEY_EQUIPMENT_GENERATING_INDEX..i]
         --print("index ", generationTableIndex)
-        local item = mEquipmentGenerationTable[generationTableIndex]()
-        if item then
-            local position = Hyperspace.metaVariables[KEY_EQUIPMENT_ASSIGNMENT..i]
-            --print("custom loading", item.name, i)
-            item.onLoad(item, i)
-            --print("loading ", item.name, " genIndx ", item.generating_index, " slot ", position)
-            if position == nil then 
-                position = -2
-                item.assigned_slot = -2
-            end
-            if position == -1 then
-                addToInventory(item)
-            else
-                item.fromLoad = true
-                if not addToCrew(item, position) then --really ugly fallback code
-                    lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position..", placing in inventory.")
-                    if position then
-                        item.onRemove(item, lwl.getCrewById(position))
-                    end
+        if generationTableIndex > 0 and generationTableIndex <= #mEquipmentGenerationTable then
+            local item = mEquipmentGenerationTable[generationTableIndex]() --todo harden this so it doesn't crash so easily if everything isn't exactly like it expects it.
+            if item then
+                local position = mEquipmentPlayerVariableInterface.getVariable(i, KEY_EQUIPMENT_ASSIGNMENT)--Hyperspace.playerVariables[KEY_EQUIPMENT_ASSIGNMENT..i]
+                --print("custom loading", item.name, i)
+                item.onLoad(item, i)
+                --print("loading ", item.name, " genIndx ", item.generating_index, " slot ", position)
+                if position == nil then 
+                    position = -2
+                    item.assigned_slot = -2
+                end
+                if position == -1 then
                     addToInventory(item)
+                else
+                    item.fromLoad = true
+                    if not addToCrew(item, position) then --really ugly fallback code
+                        lwl.logError(TAG, "Failed to load item "..item.name.." into position "..position..", placing in inventory.")
+                        if position then
+                            item.onRemove(item, lwl.getCrewById(position))
+                        end
+                        addToInventory(item)
+                    end
                 end
             end
+        else
+            print("Invalid index "..generationTableIndex)
         end
         --print("loaded item ", item.name, position)
     end
@@ -601,6 +612,7 @@ that's it, no fancy saving or loading stuff.
 
 ------------------------------------REALTIME EVENTS----------------------------------------------------------
 local function tickEquipment()
+    if not lwce.isInitialized() then return end
     local ownshipManager = Hyperspace.ships(0)
     if not ownshipManager then return end
     local playerCrew = lwl.getAllMemberCrewFromFactory(lwl.filterOwnshipTrueCrew)
@@ -617,6 +629,7 @@ local function tickEquipment()
 end
 
 local function renderEquipment()
+    if not lwce.isInitialized() then return end
     local ownshipManager = Hyperspace.ships(0)
     if not ownshipManager then return end
     local playerCrew = lwl.getAllMemberCrewFromFactory(lwl.filterOwnshipTrueCrew)
@@ -632,26 +645,18 @@ local function renderEquipment()
     end
 end
 
-script.on_internal_event(Defines.InternalEvents.ON_TICK, function()
-    if not lwce.isInitialized() then return end
-    renderEquipment()
-    if not lwl.isPaused() then
-        --[[ formula to turn ticks into 1/32 second
-        16 / speedFactor = ticks per second
-        tps * functor = 32
-        --]]
-        mScaledLocalTime = mScaledLocalTime + (Hyperspace.FPS.SpeedFactor * 16 / 10)
-        if (mScaledLocalTime > 1) then
-            tickEquipment()
-            mScaledLocalTime = 0
-        end
+local function onTickNoPause() --todo this isn't properly handling the crew change observer and I'm not quite sure how.
+    --I should probably write up how exactly CCW works with restarting the game.
+    if Hyperspace.ships.player ~= nil and Hyperspace.ships.player.iCustomizeMode == 2 and mSetupFinished then
+        --print("reset setup flag")
+        mSetupFinished = false
     end
-    if not mScaledLocalTime == 0 then return end
-    if not mSetupFinished then
-        --resetPersistedValues() --todo remove
-        constructEnhancementsLayout()
-    end
-    
+    --print("stability?", Hyperspace.playerVariables.stability)
+end
+
+local function onTick()
+    --if in hangar, unmark setup.
+    if not mSetupFinished then return end
     --Update crew table
     local addedCrew = mCrewChangeObserver.getAddedCrew()
     local removedCrew = mCrewChangeObserver.getRemovedCrew()
@@ -673,10 +678,10 @@ script.on_internal_event(Defines.InternalEvents.ON_TICK, function()
         for _, line in ipairs(removedLines) do
             for _, button in ipairs(line.objects) do
                 if (button.item) then
-                    if (math.random() > .7) then --maybe you saved it?
+                    if (math.random() > .7) then --maybe you saved it?  todo items that increase this.
                         addToInventory(button.item)
                     else
-                        cel.deleteItem(button, item)
+                        cel.deleteItem(button, button.item)
                     end
                 end
             end
@@ -688,14 +693,15 @@ script.on_internal_event(Defines.InternalEvents.ON_TICK, function()
         mCrewListContainer.addObject(buildCrewRow(crewmem))
     end
     
-    if not mSetupFinished then
-        loadPersistedEquipment()
-        mSetupFinished = true
-    end
     --print("equipment saving last seen state")
     mCrewChangeObserver.saveLastSeenState()
-end)
+    --print("Last seen crew are", lwl.dumpObject(mCrewChangeObserver.lastSeenCrew))
+end
 
+lwst.registerOnTick(tickEquipment, false)
+lwst.registerOnTick(renderEquipment, true)
+lwst.registerOnTick(onTick, false)
+lwst.registerOnTick(onTickNoPause, true) --todo turn this into a broadcaster for when you enter the hangar.
 
 script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
@@ -741,7 +747,7 @@ function gex_give_all_items()
 end
 
 function gex_remove_all_items()
-    if mSetupFinished then
+    if mCrewListContainer then
         resetInventory()
     end
     resetPersistedValues()
@@ -807,10 +813,24 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
     --print("itemChancepre", itemChance)
     --print("itemChance", itemChance)
 end)
-script.on_game_event("START_BEACON_REAL", false, function()
-        gex_remove_all_items()
-    end)
+-- script.on_game_event("START_BEACON_REAL", false, function()
+--         gex_remove_all_items()
+--     end)
 
+local function setupSave(newGame)
+    --todo if you go in the hangar, unsetSetup
+    if newGame then
+        gex_remove_all_items()
+    else
+        if not mSetupFinished then
+            loadPersistedEquipment()
+        end
+    end
+    mSetupFinished = true
+end
+lweb.registerPlayerVariableInitializationListener(setupSave)
+constructEnhancementsLayout()
+--todo fix an issue where you can't control any of your crew when you start a new run.
 
 ---------------------Things with Dependencies-----------------------------------
 
