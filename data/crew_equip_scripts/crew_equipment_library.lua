@@ -699,9 +699,9 @@ local function onTick()
 end
 
 lwst.registerOnTick(tickEquipment, false)
-lwst.registerOnTick(renderEquipment, true)
+lwst.registerTrueOnTick(renderEquipment, true)
 lwst.registerOnTick(onTick, false)
-lwst.registerOnTick(onTickNoPause, true) --todo turn this into a broadcaster for when you enter the hangar.
+lwst.registerOnTick(onTickNoPause, true) --todo grab this from LWEB instead.
 
 script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
