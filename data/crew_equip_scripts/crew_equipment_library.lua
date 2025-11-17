@@ -545,7 +545,7 @@ local function buildCrewEquipmentScrollBar()
     return lwui.buildVerticalContainer(0, 0, 300, 20, tabOneStandardVisibility, NOOP, {}, false, true, mCrewRowPadding)
 end
 
-local function constructEnhancementsLayout()
+local function constructEnhancementsLayout() --todo lwui there might be a better way to pass contents that lets people define their own stuff inside.
     --Left hand side
     --print("building crew layout")
     mCrewListContainer = buildCrewEquipmentScrollBar()
@@ -703,7 +703,8 @@ lwst.registerTrueOnTick(renderEquipment, true)
 lwst.registerOnTick(onTick, false)
 lwst.registerOnTick(onTickNoPause, true) --todo grab this from LWEB instead.
 
-script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
+-- script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
+lwl.safe_script.on_render_event(TAG.."_on_render", Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
     if not mSetupFinished then return end
     --might need to put this in the reset category.
@@ -778,7 +779,8 @@ cel.ITEM_ANY = "CEL_ANY_ITEM"
 --[[
 After winning a battle, a chance to give one item.  Scales with TopScore.sector.  
 --]]
-script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
+-- script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
+lwl.safe_script.on_internal_event(TAG.."_random_item_reward", Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
     local autoItemList = mGuaranteedEventTable[event.eventName]
     if autoItemList then
         for _,itemName in ipairs(autoItemList) do
@@ -854,6 +856,10 @@ end
 
 
     --[[
+    Function to give items disco stat values that modify crew numbers.
+    This would be more interesting if there were more disco events.
+    How do these things know about each other?  Crew userdata table.  This is some effort, so table for now.
+
     might revisit this if someone tells me what these methods do.
     local anim = crewmem.crewAnim.anims[1] --TODO I guess we can cycle through these to be fancy but ok
     --render animation somewhere
