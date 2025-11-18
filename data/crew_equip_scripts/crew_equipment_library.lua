@@ -560,6 +560,7 @@ local function constructEnhancementsLayout() --todo lwui there might be a better
     mDescriptionHeader = lwui.buildFixedTextBox(645, 348, 225, 35, tabOneStandardVisibility, NOOP, 18)--TODO AALL FIX
     mDescriptionHeader.text = NO_ITEM_SELECTED_TEXT
     lwui.addTopLevelObject(mDescriptionHeader, LAYER_TABBED_WINDOW)
+    print("lwui added tabbed window")
     mDescriptionTextBox = lwui.buildDynamicHeightTextBox(0, 0, 245, 90, tabOneStandardVisibility, NOOP, 10)
     local descriptionTextScrollWindow = lwui.buildVerticalScrollContainer(643, 384, 260, 150, tabOneStandardVisibility, mDescriptionTextBox, lwui.testScrollBarSkin)
     lwui.addTopLevelObject(descriptionTextScrollWindow, LAYER_TABBED_WINDOW)
@@ -698,10 +699,10 @@ local function onTick()
     --print("Last seen crew are", lwl.dumpObject(mCrewChangeObserver.lastSeenCrew))
 end
 
-lwst.registerOnTick(tickEquipment, false)
-lwst.registerTrueOnTick(renderEquipment, true)
-lwst.registerOnTick(onTick, false)
-lwst.registerOnTick(onTickNoPause, true) --todo grab this from LWEB instead.
+lwst.registerOnTick(TAG.."equipment_tick", tickEquipment, false)
+lwst.registerTrueOnTick(TAG.."equipment_render", renderEquipment, true)
+lwst.registerOnTick(TAG.."main_tick", onTick, false)
+lwst.registerOnTick(TAG.."setup_reset", onTickNoPause, true) --todo grab this from LWEB instead.
 
 -- script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
 lwl.safe_script.on_render_event(TAG.."_on_render", Defines.RenderEvents.TABBED_WINDOW, function()
