@@ -453,7 +453,6 @@ local function loadPersistedEquipment()
         else
             print("Invalid index "..generationTableIndex)
         end
-        --print("loaded item ", item.name, position)
     end
 end
 ------------------------------------END ITEM STORAGE FUNCTIONS----------------------------------------------------------
@@ -560,7 +559,7 @@ local function constructEnhancementsLayout() --todo lwui there might be a better
     mDescriptionHeader = lwui.buildFixedTextBox(645, 348, 225, 35, tabOneStandardVisibility, NOOP, 18)--TODO AALL FIX
     mDescriptionHeader.text = NO_ITEM_SELECTED_TEXT
     lwui.addTopLevelObject(mDescriptionHeader, LAYER_TABBED_WINDOW)
-    print("lwui added tabbed window")
+    --print("lwui added tabbed window")
     mDescriptionTextBox = lwui.buildDynamicHeightTextBox(0, 0, 245, 90, tabOneStandardVisibility, NOOP, 10)
     local descriptionTextScrollWindow = lwui.buildVerticalScrollContainer(643, 384, 260, 150, tabOneStandardVisibility, mDescriptionTextBox, lwui.testScrollBarSkin)
     lwui.addTopLevelObject(descriptionTextScrollWindow, LAYER_TABBED_WINDOW)
@@ -704,8 +703,8 @@ lwst.registerTrueOnTick(TAG.."equipment_render", renderEquipment, true)
 lwst.registerOnTick(TAG.."main_tick", onTick, false)
 lwst.registerOnTick(TAG.."setup_reset", onTickNoPause, true) --todo grab this from LWEB instead.
 
--- script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
-lwl.safe_script.on_render_event(TAG.."_on_render", Defines.RenderEvents.TABBED_WINDOW, function()
+script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
+-- lwl.safe_script.on_render_event(TAG.."_on_render", Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
     if not mSetupFinished then return end
     --might need to put this in the reset category.
@@ -713,11 +712,11 @@ end, function(tabName)
     if tabName == ENHANCEMENTS_TAB_NAME then
         --description rendering, last hovered item will persist until window refreshed.
         local buttonContents = nil
-        if (lwui.mHoveredButton ~= nil) then
-            buttonContents = lwui.mHoveredButton.item
+        if (lwui.mHoveredObject ~= nil) then
+            buttonContents = lwui.mHoveredObject.item
         end
-        if (lwui.mClickedButton ~= nil) then
-            buttonContents = lwui.mClickedButton.item
+        if (lwui.mClickedObject ~= nil) then
+            buttonContents = lwui.mClickedObject.item
         end
         if (buttonContents) then
             mDescriptionHeader.text = buttonContents.name
@@ -780,8 +779,8 @@ cel.ITEM_ANY = "CEL_ANY_ITEM"
 --[[
 After winning a battle, a chance to give one item.  Scales with TopScore.sector.  
 --]]
--- script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
-lwl.safe_script.on_internal_event(TAG.."_random_item_reward", Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
+script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
+-- lwl.safe_script.on_internal_event(TAG.."_random_item_reward", Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
     local autoItemList = mGuaranteedEventTable[event.eventName]
     if autoItemList then
         for _,itemName in ipairs(autoItemList) do

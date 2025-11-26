@@ -2,7 +2,7 @@
   <title><![CDATA[ Crew Equipment Library ]]></title>
   <threadUrl><![CDATA[https://github.com/neopryne/FTL-Crew-Equipment-Library]]></threadUrl>
   <author><![CDATA[ Limrix ]]></author>
-  <version><![CDATA[ 0.4 ]]></version>
+  <version><![CDATA[ 0.10 ]]></version>
   <description>
 <![CDATA[
 # Crew Equipment Library
@@ -13,7 +13,7 @@ Don't patch this unless you're also patching something that uses it, otherwise i
 Thanks to Arc for the tab assets!
 
 ### Requirements:
-[Lightweight Lua](https://github.com/neopryne/lightweight-lua) 0.8+
+[Lightweight Lua](https://github.com/neopryne/lightweight-lua) 0.15.1+
 ]]>
   </description>
 </metadata>
