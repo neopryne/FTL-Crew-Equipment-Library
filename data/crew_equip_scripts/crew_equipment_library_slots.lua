@@ -5,14 +5,16 @@ local TYPE_WEAPON = "Weapon"
 local TYPE_ARMOR = "Armor"
 local TYPE_TOOL = "Tool"
 local TYPE_NONE = "None" --greyed out
-local TYPE_SPACER = "Spacer" --half width, not a button
+local TYPE_HALF_WIDTH_SPACER = "Spacer_half" --half width, not a button
+local TYPE_FULL_WIDTH_SPACER = "Spacer_full"
 local TYPE_ANY = "Any" --wildcard
 cels.TYPE_WEAPON = TYPE_WEAPON
 cels.TYPE_ARMOR = TYPE_ARMOR
 cels.TYPE_TOOL = TYPE_TOOL
 cels.TYPE_ANY = TYPE_ANY
 cels.TYPE_NONE = TYPE_NONE
-cels.TYPE_SPACER = TYPE_SPACER
+cels.TYPE_HALF_WIDTH_SPACER = TYPE_HALF_WIDTH_SPACER
+cels.TYPE_FULL_WIDTH_SPACER = TYPE_FULL_WIDTH_SPACER
 
 local SLOTS_ALL = {TYPE_WEAPON, TYPE_ARMOR, TYPE_TOOL}--default.  For this reason, most uniques and all morphs are off the list.
 local SLOTS_NONE = {TYPE_NONE, TYPE_NONE, TYPE_NONE}
@@ -22,7 +24,7 @@ local SLOTS_NOARMOR = {TYPE_WEAPON, TYPE_NONE, TYPE_TOOL}
 local SLOTS_ONLYWEAPON = {TYPE_WEAPON, TYPE_NONE, TYPE_NONE}
 local SLOTS_TWOWEAPON = {TYPE_WEAPON, TYPE_WEAPON, TYPE_NONE}
 local SLOTS_ALLWEAPON = {TYPE_WEAPON, TYPE_WEAPON, TYPE_WEAPON}
-local SLOTS_ANYTWO = {TYPE_SPACER, TYPE_ANY, TYPE_ANY}
+local SLOTS_ANYTWO = {TYPE_HALF_WIDTH_SPACER, TYPE_ANY, TYPE_ANY}
 local SLOTS_WILDCARD = {TYPE_ANY, TYPE_ANY, TYPE_ANY}
 local CREW_STAT_TABLE
 
@@ -34,8 +36,23 @@ cels.SLOTS_NOARMOR = SLOTS_NOARMOR
 cels.SLOTS_ONLYWEAPON = SLOTS_ONLYWEAPON
 cels.SLOTS_ANYTWO = SLOTS_ANYTWO
 
+--You can also define your own 
+--example twoslot thing, you want to add a spacer for every slot missing.
+--Basically you always want three things in these tables.
+local twoarmor = {TYPE_HALF_WIDTH_SPACER, cels.TYPE_ARMOR, cels.TYPE_ARMOR}
+
 ------------------------------------API----------------------------------------------------------
 ---Add a new crew type, or change the slots of an existing one.
+---Usage:
+--- script.on_load(function()
+---     local cels = mods.crew_equipment_library_slots
+---     if cels then
+---         cels.setRaceSlotDefinition("my_race_name", cels.[whatever])
+---     end
+--- end)
+--- 
+--- This makes it so that this isn't a dependency, but will work if this mod is patched.
+---
 ---@param raceName string
 ---@param slots table of CELS TYPE_ values.  You can use the predefined onces or create your own.
 function cels.setRaceSlotDefinition(raceName, slots)

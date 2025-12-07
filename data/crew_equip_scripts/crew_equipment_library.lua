@@ -38,12 +38,6 @@ local updateGui
 local ENHANCEMENTS_TAB_NAME = "crew_enhancements"
 local LAYER_TABBED_WINDOW = "TABBED_WINDOW"
 local EQUIPMENT_SUBTAB_INDEX = 1
-cel.TYPE_WEAPON = "Weapon"
-cel.TYPE_ARMOR = "Armor"
-cel.TYPE_TOOL = "Tool"
-local TYPE_NONE = "None"
-local TYPE_ANY = "Any"
-local TYPE_SPACER = "Spacer"
 local EQUIPMENT_ICON_SIZE = 30
 local GEX_CREW_ID = "GEX_crewId"
 local ERROR_RENDER_FUNCTION = lwui.spriteRenderFunction("items/CEL_ERROR.png")
@@ -485,37 +479,39 @@ local function buildIButton(filterFunction, renderFunction, itemTypes, crewId)
 end
 
 local function inventoryButtonWeaponDefault(object)
-    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(12.8/100, 1/100, 5/100, 1), Graphics.GL_Color(63/255, 55/255, 60/255, 1))
+    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(40/256, 9/256, 10/256, 1), Graphics.GL_Color(8.4/100, 1/100, 3.5/100, 1))
 end
 
 local function inventoryButtonArmorDefault(object)
-    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(1/100, 7/100, 12/100, 1), Graphics.GL_Color(55/255, 60/255, 67/255, 1))
+    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(13/256, 15/256, 40/256, 1), Graphics.GL_Color(0/100, 0/100, 0/100, 1))
 end
 
 local function inventoryButtonToolDefault(object)
-    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(1.3/100, 12.8/100, 4.1/100, 1), Graphics.GL_Color(50/255, 63/255, 55/255, 1))
+    lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(1.3/100, 12.8/100, 4.1/100, 1), Graphics.GL_Color(.7/100, 6.7/100, 2/100, 1))
 end
 
 local function buildSingleButton(crewmem, buttonType)
     local object
     local crewId = crewmem.extend.selfId
-    if buttonType == TYPE_NONE then
+    if buttonType == cels.TYPE_NONE then
         object = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility,
             lwui.inventoryButtonDefaultDisabled)
-    elseif buttonType == cel.TYPE_WEAPON then
+    elseif buttonType == cels.TYPE_WEAPON then
         object = buildIButton(generateStandardFilterFunction(buttonType),
             inventoryButtonWeaponDefault, buttonType, crewId)
-    elseif buttonType == cel.TYPE_ARMOR then
+    elseif buttonType == cels.TYPE_ARMOR then
         object = buildIButton(generateStandardFilterFunction(buttonType),
             inventoryButtonArmorDefault, buttonType, crewId)
-    elseif buttonType == cel.TYPE_TOOL then
+    elseif buttonType == cels.TYPE_TOOL then
         object = buildIButton(generateStandardFilterFunction(buttonType),
             inventoryButtonToolDefault, buttonType, crewId)
-    elseif buttonType == TYPE_ANY then
+    elseif buttonType == cels.TYPE_ANY then
         object = buildIButton(inventoryFilterFunctionAny, lwui.inventoryButtonFadedGayDefault, buttonType, crewId)
         object[GEX_CREW_ID] = crewId
-    elseif buttonType == TYPE_SPACER then
-        object = lwui.buildObject(0, 0, mCrewLineHeight/2 - mCrewLinePadding, mCrewLineHeight, tabOneStandardVisibility, NOOP)
+    elseif buttonType == cels.TYPE_HALF_WIDTH_SPACER then
+        object = lwui.buildObject(0, 0, (mCrewLineHeight - mCrewLinePadding) / 2, mCrewLineHeight, tabOneStandardVisibility, NOOP)
+    elseif buttonType == cels.TYPE_FULL_WIDTH_SPACER then
+        object = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, NOOP)
     else
         error("GEX Unknown button type "..buttonType)
     end
