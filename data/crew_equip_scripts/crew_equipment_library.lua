@@ -244,6 +244,7 @@ end
 cel.persistEquipment = function()
     local numEquipment = cel.mItemList.length
     --print("persisting ", numEquipment, " items")
+    mEquipmentPlayerVariableInterface.clearAll()
     local successes = 0
     for i=1,numEquipment do
         local equipment = cel.mItemList:get(i)
