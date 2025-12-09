@@ -10,3 +10,5 @@
 		<tab name="crew_enhancements" windowPath="upgradeUI/Equipment/crew_enhancements_main" hasUndo="false"/>
 	</customTabs>
 </FTL>
+
+<customTextStyle enabled="true"/>

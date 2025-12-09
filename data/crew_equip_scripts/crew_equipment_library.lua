@@ -2,7 +2,7 @@
 Usage:
     local cel = mods.crew_equipment_library
     local function TickShredderCuffs() --stub end
-    local itemDef = {name="Shredder Cuffs", itemType=cel.TYPE_WEAPON, renderFunction=lwui.spriteRenderFunction("items/SpikedCuffs.png"), description="Looking sharp.  Extra damage in melee.", onTick=TickShredderCuffs}
+    local itemDef = {name="Shredder Cuffs", itemType=cels.TYPE_WEAPON, renderFunction=lwui.spriteRenderFunction("items/SpikedCuffs.png"), description="Looking sharp.  Extra damage in melee.", onTick=TickShredderCuffs}
     cel.insertItemDefinition(itemDef)
 See buildBlueprintFromDefinition for more optional arguments.  Item images should be 30x30 pngs, and look better with at least some transparency.
 ]]
@@ -45,7 +45,6 @@ local ERROR_RENDER_FUNCTION = lwui.spriteRenderFunction("items/CEL_ERROR.png")
 --local INVENTORY_BUTTON_PREFIX = "inventory_button_"
 local NO_ITEM_SELECTED_TEXT = "--- None Selected ---"
 
-local mEquipmentList = {}
 local KEY_NUM_EQUIPS = "GEX_CURRENT_EQUIPMENT_TOTAL"
 local KEY_EQUIPMENT_GENERATING_INDEX = "GEX_EQUIPMENT_GENERATING_INDEX_"
 local KEY_EQUIPMENT_ASSIGNMENT = "GEX_EQUIPMENT_ASSIGNMENT_"
@@ -148,14 +147,25 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
     end
 end
 ------------------------------------API----------------------------------------------------------
+cel.itemTypeDistribution = {}
+
+
+
 ---@param itemDef table
 ---@return function
 local function buildBlueprintFromDefinition(itemDef)
     --Required
     local name = lwl.setIfNil(itemDef.name, "FORGOT NAME!")
-    local itemType = lwl.setIfNil(itemDef.itemType, cel.TYPE_WEAPON)
+    local itemType = lwl.setIfNil(itemDef.itemType, cels.TYPE_WEAPON)
     local renderFunction = lwl.setIfNil(itemDef.renderFunction, ERROR_RENDER_FUNCTION)
     local description = lwl.setIfNil(itemDef.description, "FORGOT DESCRIPTION!")
+
+    if cel.itemTypeDistribution[itemType] == nil then
+        cel.itemTypeDistribution[itemType] = 1
+    else
+        cel.itemTypeDistribution[itemType] = cel.itemTypeDistribution[itemType] + 1
+    end
+
     --Optional
     local onCreate = lwl.setIfNil(itemDef.onCreate, NOOP)
     local onTick = lwl.setIfNil(itemDef.onTick, NOOP)
@@ -209,8 +219,12 @@ function cel.crewHasItem(crewId, itemName)
     return (button ~= nil)
 end
 
+---Returns a table of all equippment currently onboard.
+---Doesn't work yet.
 function cel.getCurrentEquipment()
-    
+
+    --get equipment from all crew, then get it from the inventory.
+    --Alternatively, run a traverse of the entire inventory UI and return all item class objects.
 end
 
 ---Returns a list of all items equiped to this crew member.
@@ -541,6 +555,10 @@ local function buildCrewEquipmentScrollBar()
     return lwui.buildVerticalContainer(0, 0, 300, 20, tabOneStandardVisibility, NOOP, {}, false, true, mCrewRowPadding)
 end
 
+local colorWeaponText = "996969"
+local colorArmorText = "5b5e80"
+local colorToolText = "75a26e"
+
 local function constructEnhancementsLayout() --todo lwui there might be a better way to pass contents that lets people define their own stuff inside.
     --Left hand side
     --print("building crew layout")
@@ -549,7 +567,11 @@ local function constructEnhancementsLayout() --todo lwui there might be a better
     lwui.addTopLevelObject(crewListScrollWindow, LAYER_TABBED_WINDOW)
     --lwui.addTopLevelObject(ib1)
     local nameHeader = lwui.buildFixedTextBox(340, mTabTop, 260, 26, tabOneStandardVisibility, NOOP, 16)
-    nameHeader.text = "       Name             Weapon Armor Tool"
+    local nameHeaderString = "       Name             "
+    local weaponHeaderString = "[style[color:"..colorWeaponText.."]]".."Weapon ".."[[/style]]"
+    local armorHeaderString = "[style[color:"..colorArmorText.."]]".."Armor ".."[[/style]]"
+    local toolHeaderString = "[style[color:"..colorToolText.."]]".."Tool".."[[/style]]"
+    nameHeader.text = nameHeaderString..weaponHeaderString..armorHeaderString..toolHeaderString
     lwui.addTopLevelObject(nameHeader, LAYER_TABBED_WINDOW)
     
     --Lower right corner
