@@ -673,11 +673,16 @@ local function onTickNoPause() --todo this isn't properly handling the crew chan
     --print("stability?", Hyperspace.playerVariables.stability)
 end
 
-local function onTick()
-    --if in hangar, unmark setup.
-    if not mSetupFinished then return end
-    --Update crew table
+local function addCrew()
     local addedCrew = mCrewChangeObserver.getAddedCrew()
+    for _, crewId in ipairs(addedCrew) do
+        local crewmem = lwl.getCrewById(crewId)
+        --print("eq crew added ", crewId, crewmem:GetName())
+        mCrewListContainer.addObject(buildCrewRow(crewmem))
+    end
+end
+
+local function removeCrew()
     local removedCrew = mCrewChangeObserver.getRemovedCrew()
     for _, crewId in ipairs(removedCrew) do
         --print("eq crew removed id ", crewId)
@@ -706,12 +711,23 @@ local function onTick()
             end
         end
     end
-    for _, crewId in ipairs(addedCrew) do
-        local crewmem = lwl.getCrewById(crewId)
-        --print("eq crew added ", crewId, crewmem:GetName())
-        mCrewListContainer.addObject(buildCrewRow(crewmem))
+end
+
+local function loadStuff()
+    if not mSetupFinished then
+        loadPersistedEquipment()
+        mSetupFinished = true
     end
+end
+
+local function onTick()
+    if (not mCrewChangeObserver.isInitialized()) then return end
     
+    --if in hangar, unmark setup.
+    --if not mSetupFinished then return end
+    --Update crew table
+    addCrew()
+    removeCrew()
     --print("equipment saving last seen state")
     mCrewChangeObserver.saveLastSeenState()
     --print("Last seen crew are", lwl.dumpObject(mCrewChangeObserver.lastSeenCrew))
@@ -725,7 +741,7 @@ lwst.registerOnTick(TAG.."setup_reset", onTickNoPause, true) --todo grab this fr
 script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
 -- lwl.safe_script.on_render_event(TAG.."_on_render", Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
-    if not mSetupFinished then return end
+    loadStuff()
     --might need to put this in the reset category.
     --print("tab name "..tabName)
     if tabName == ENHANCEMENTS_TAB_NAME then
@@ -837,20 +853,16 @@ end)
 -- script.on_game_event("START_BEACON_REAL", false, function()
 --         gex_remove_all_items()
 --     end)
-
+local mPlayerVariablesLoaded = false
 local function setupSave(newGame)
-    --todo if you go in the hangar, unsetSetup
+    --todo if you go in the hangar, unsetSetup.  Wait, do I actually want that?
     if newGame then
         gex_remove_all_items()
-    else
-        if not mSetupFinished then
-            loadPersistedEquipment()
-        end
     end
-    mSetupFinished = true
 end
-lweb.registerPlayerVariableInitializationListener(setupSave)
+
 constructEnhancementsLayout()
+lweb.registerPlayerVariableInitializationListener(setupSave)
 --todo fix an issue where you can't control any of your crew when you start a new run.
 
 ---------------------Things with Dependencies-----------------------------------
