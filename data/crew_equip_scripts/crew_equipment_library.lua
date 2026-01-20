@@ -85,7 +85,6 @@ local mItemsSold = 0
 local mDescriptionHeader
 local mDescriptionTextBox
 local mInventoryButtons = {}
-local mScaledLocalTime = 0
 
 local inventoryRows = 5
 local inventoryColumns = 6
@@ -376,24 +375,35 @@ local function buttonAddInventory(button, item)
     cel.persistEquipment()
 end
 
---Id of crew to check, filter function to use, if you need only empty buttons.
-local function getCrewButton(crewId, item, requireEmpty)
+local function getCrewRow(crewId)
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
         --print("checking row ", crewContainer[GEX_CREW_ID])
         if (crewContainer[GEX_CREW_ID] == crewId) then
-            --print("crew found, looking for button that can hold", item.itemType)
-            for _, iButton in ipairs(crewContainer.objects) do
-                --print("checking for buttons ", iButton.className)
-                if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
-                    if (iButton.allowedItemsFunction(item)) then
-                        if requireEmpty then
-                            if not iButton.item then
-                                return iButton
-                            end
-                        else
-                            return iButton
-                        end
+            return crewContainer
+        end
+    end
+end
+
+local function getCrewNametag(crewId)
+    local crewContainer = getCrewRow(crewId)
+    --look for the box that should hold the name.
+    return crewContainer.objects[2] --TODO change if I reorder this.  Not a great solution overall.  All things should be uniquely identifyable in O(1) time.
+end
+
+--Id of crew to check, filter function to use, if you need only empty buttons.
+local function getCrewButton(crewId, item, requireEmpty)
+    local crewContainer = getCrewRow(crewId)
+    --print("crew found, looking for button that can hold", item.itemType)
+    for _, iButton in ipairs(crewContainer.objects) do
+        --print("checking for buttons ", iButton.className)
+        if (iButton.className == lwui.classNames.INVENTORY_BUTTON) then
+            if (iButton.allowedItemsFunction(item)) then
+                if requireEmpty then
+                    if not iButton.item then
+                        return iButton
                     end
+                else
+                    return iButton
                 end
             end
         end
@@ -722,9 +732,7 @@ end
 
 local function onTick()
     if (not mCrewChangeObserver.isInitialized()) then return end
-    
     --if in hangar, unmark setup.
-    --if not mSetupFinished then return end
     --Update crew table
     addCrew()
     removeCrew()
@@ -853,7 +861,6 @@ end)
 -- script.on_game_event("START_BEACON_REAL", false, function()
 --         gex_remove_all_items()
 --     end)
-local mPlayerVariablesLoaded = false
 local function setupSave(newGame)
     --todo if you go in the hangar, unsetSetup.  Wait, do I actually want that?
     if newGame then
