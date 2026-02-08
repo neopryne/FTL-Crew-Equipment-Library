@@ -544,9 +544,52 @@ local function buildSingleButton(crewmem, buttonType)
 end
 
 local function buildCrewRow(crewmem)
-    --todo replace red square with crew image.  For now, overlay crew race.
-    local animPlaceholder = lwui.buildFixedTextBox(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)), 9)
-    --local anim = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3)))
+        local function buildCrewPortrait(crewmemLocal)
+        local baseId = crewmemLocal:GetSpecies()
+        local fallbackId = crewmemLocal.extend:GetDefinition().race
+        local cached = lwl.getCrewPortraitAnim(baseId, fallbackId)
+        local portrait = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, function(self)
+            if self.crewAnim then
+                local mask = self.maskFunction()
+                Graphics.CSurface.GL_PushStencilMode()
+                Graphics.CSurface.GL_SetStencilMode(1, 1, 1)
+                Graphics.CSurface.GL_ClearAll()
+                Graphics.CSurface.GL_SetStencilMode(1, 1, 1)
+                Graphics.CSurface.GL_PushMatrix()
+                Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(1, 1, 1, 1))
+                Graphics.CSurface.GL_PopMatrix()
+                Graphics.CSurface.GL_SetStencilMode(2, 1, 1)
+                Graphics.CSurface.GL_PushMatrix()
+                self.crewAnim.position = Hyperspace.Pointf(mask.getPos().x, mask.getPos().y)
+                self.crewAnim:SetCurrentFrame(0)
+                Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(.42, .61, .61, .6))
+                self.crewAnim:OnRender(1, Graphics.GL_Color(0, 0, 0, .5), false)
+                Graphics.CSurface.GL_PopMatrix()
+                Graphics.CSurface.GL_SetStencilMode(0, 1, 1)
+                Graphics.CSurface.GL_PopStencilMode()
+            else
+                lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3))(self)
+            end
+        end)
+       if cached then
+            portrait.crewAnim = cached.anim
+        end
+        portrait.crewAnimBaseId = baseId
+        portrait.updateCrewPortrait = function(self, newCrewmem)
+            if not newCrewmem then return end
+            local newBaseId = newCrewmem:GetSpecies()
+            if newBaseId == self.crewAnimBaseId and self.crewAnim then
+                return
+            end
+            local newFallbackId = newCrewmem.extend:GetDefinition().race
+            local newCached = lwl.getCrewPortraitAnim(newBaseId, newFallbackId)
+            self.crewAnim = newCached and newCached.anim or nil
+            self.crewAnimBaseId = newBaseId
+        end
+        return portrait
+    end
+
+    local animPlaceholder = buildCrewPortrait(crewmem)
     local nameText = lwui.buildFixedTextBox(0, 0, mCrewLineNameWidth, mCrewLineHeight, tabOneStandardVisibility, NOOP, mCrewLineTextSize)
     nameText.text = crewmem:GetName()
     
@@ -613,15 +656,31 @@ end
 local function updateGuiNames()
     for _, crewContainer in ipairs(mCrewListContainer.objects) do
         local crewmem = lwl.getCrewById(crewContainer[GEX_CREW_ID])
+        if not crewmem then
+            goto continue
+        end
         local speciesBox = crewContainer.objects[1]
         local nameBox = crewContainer.objects[2]
         if nameBox.className == lwui.classNames.FIXED_TEXT_BOX then
             nameBox.text = crewmem:GetName()
         end
-        if speciesBox.className == lwui.classNames.FIXED_TEXT_BOX then
-            speciesBox.text = crewmem:GetSpecies()--Orchid Floral?
+        if speciesBox.updateCrewPortrait then
+            speciesBox.updateCrewPortrait(crewmem)
         end
+        ::continue::
     end
+end
+
+--[[
+disco core is fine, that event is just broken.  Fix the event.  that goodness, that's much easier.
+Then I can get to adding more events and fixing my UI and posting screenshots of what's
+]]
+local function buildCrewImageRenderFunction()
+    item.animation.position = Hyperspace.Pointf(spriteX, spriteY)
+	item.animation:OnRender(1.0, Graphics.GL_Color(1, 1, 1, 1), false)
+
+    --crewMember.extend:GetDefinition().animBase
+    --.animSheet[2]
 end
 
 ---Called when you open the gui, to update crew info in case their names changed.
@@ -903,5 +962,9 @@ end
     --render animation somewhere
     --decent chance this fucks up the crew animation, but I want to know what it does.
     anim.position = Hyperspace.Pointf(400, 0)
-    anim:OnRender(1f, Graphics.GL_Color(1, 1, 1, 1), false)--]]
+    anim:OnRender(1f, Graphics.GL_Color(1, 1, 1, 1), false)
+    
+    Going into the hangar and back breaks things with the persist logic.  Probably because of something I'm not thinking about wrt player variables.
+    
+    --]]
 
