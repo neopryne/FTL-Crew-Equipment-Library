@@ -415,6 +415,7 @@ CREW_STAT_TABLE = {
     fff_f22=SLOTS_ONLYWEAPON,
     fff_buffer=SLOTS_NOWEAPON,
     fff_omen=SLOTS_NONE,
+    fff_program_crew=SLOTS_NONE,
     --[[ ALL
     easter_brick=CREW_STAT_DEFINITIONS.ROCKMAN,
     easter_coomer=CREW_STAT_DEFINITIONS.HUMAN_SOLDIER,
