@@ -8,7 +8,6 @@ See buildBlueprintFromDefinition for more optional arguments.  Item images shoul
 ]]
 
  if (not mods) then mods = {} end
- mods.crew_equipment_library = {}
  local cel = mods.crew_equipment_library
 local cels = mods.crew_equipment_library_slots
 local lwl = mods.lightweight_lua
@@ -31,7 +30,7 @@ Can't be in lwl as it adds a tab.
 crew observer breaks sometimes and there's a memory leak, possibly in effects.
 --]]
 
-----------------------------------------------------DEFINES----------------------
+--#region --------------------------------------------------DEFINES----------------------
 local TAG = "LW Crew Equips"
 local function NOOP() end
 local updateGui
@@ -56,6 +55,9 @@ local mListeners = {}
 for _,event in ipairs(EVENT_LIST) do
     mListeners[event] = {}
 end
+
+local PITY_ITEM_MISS_CAP = 12
+local mItemPityTracker = 0
 
 --Do not modify these, actually maybe add a copy getter or something.
 cel.mNameToItemIndexTable = {}
@@ -88,7 +90,7 @@ local mInventoryButtons = {}
 
 local inventoryRows = 5
 local inventoryColumns = 6
-
+--#endregion
 
 local function fireEvent(eventName, value)
     local listenerList = mListeners[eventName]
@@ -145,7 +147,7 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
         return nil
     end
 end
-------------------------------------API----------------------------------------------------------
+--#region ----------------------------------API----------------------------------------------------------
 cel.itemTypeDistribution = {}
 
 
@@ -300,8 +302,8 @@ end
 function cel.registerListener(eventName, callback)
     table.insert(mListeners[eventName], {callback=callback})
 end
-------------------------------------END API----------------------------------------------------------
-------------------------------------INVENTORY FILTER FUNCTIONS----------------------------------------------------------
+--#endregion ----------------------------------END API----------------------------------------------------------
+--#region ----------------------------------INVENTORY FILTER FUNCTIONS----------------------------------------------------------
 local function inventoryFilterFunctionAny(item)
     return true
 end
@@ -312,8 +314,8 @@ local function generateStandardFilterFunction(itemType)
        return (item ~= nil and item.itemType == itemType)
    end
 end
-------------------------------------END INVENTORY FILTER FUNCTIONS----------------------------------------------------------
-------------------------------------ITEM STORAGE FUNCTIONS----------------------------------------------------------
+--#endregion ----------------------------------END INVENTORY FILTER FUNCTIONS----------------------------------------------------------
+--#region ----------------------------------ITEM STORAGE FUNCTIONS----------------------------------------------------------
 --returns true if the item was able to be added, and false if there was no room.  Called when loading persisted inventory items or when obtaining new ones.
 --todo I could make some buttons you can buy that don't get cleared upon starting a new run.  Final battle tension.
 --todo Gift of Equipment, one random item, starts unlocked.  Greater boon, two random items.
@@ -474,9 +476,9 @@ local function loadPersistedEquipment()
         end
     end
 end
-------------------------------------END ITEM STORAGE FUNCTIONS----------------------------------------------------------
+--#endregion ----------------------------------END ITEM STORAGE FUNCTIONS----------------------------------------------------------
 
-------------------------------------GUI CREATION----------------------------------------------------------
+--#region ----------------------------------GUI CREATION----------------------------------------------------------
 local function buildInventoryContainer()
     local verticalContainer = lwui.buildVerticalContainer(655, mEquipmentTabTop, 300, 20, tabOneStandardVisibility, NOOP,
             {}, false, true, 7)
@@ -543,58 +545,61 @@ local function buildSingleButton(crewmem, buttonType)
     return object
 end
 
-local function buildCrewRow(crewmem)
-        local function buildCrewPortrait(crewmemLocal)
-        local baseId = crewmemLocal:GetSpecies()
-        local fallbackId = crewmemLocal.extend:GetDefinition().race
-        local cached = lwl.getCrewPortraitAnim(baseId, fallbackId)
-        local portrait = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, function(self)
-            if self.crewAnim then
-                local mask = self.maskFunction()
-                Graphics.CSurface.GL_PushStencilMode()
-                Graphics.CSurface.GL_SetStencilMode(1, 1, 1)
-                Graphics.CSurface.GL_ClearAll()
-                Graphics.CSurface.GL_SetStencilMode(1, 1, 1)
-                Graphics.CSurface.GL_PushMatrix()
-                Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(1, 1, 1, 1))
-                Graphics.CSurface.GL_PopMatrix()
-                Graphics.CSurface.GL_SetStencilMode(2, 1, 1)
-                Graphics.CSurface.GL_PushMatrix()
-                self.crewAnim.position = Hyperspace.Pointf(mask.getPos().x, mask.getPos().y)
-                self.crewAnim:SetCurrentFrame(0)
-                Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(.42, .61, .61, .6))
-                self.crewAnim:OnRender(1, Graphics.GL_Color(0, 0, 0, .5), false)
-                Graphics.CSurface.GL_PopMatrix()
-                Graphics.CSurface.GL_SetStencilMode(0, 1, 1)
-                Graphics.CSurface.GL_PopStencilMode()
-            else
-                lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3))(self)
-            end
-        end)
-       if cached then
-            portrait.crewAnim = cached.anim
+local function buildCrewPortrait(crewmemLocal)
+    local baseId = crewmemLocal:GetSpecies()
+    local fallbackId = crewmemLocal.extend:GetDefinition().race
+    local cached = lwl.getCrewPortraitAnim(baseId, fallbackId)
+    local portrait = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, function(self)
+        if self.crewAnim then
+            --print("anim: ", lwl.dumpObject(self.crewAnim))
+            local mask = self.maskFunction()
+            Graphics.CSurface.GL_PushStencilMode()
+            Graphics.CSurface.GL_SetStencilMode(1, 1, 1)
+            Graphics.CSurface.GL_ClearAll()
+            Graphics.CSurface.GL_SetStencilMode(1, 1, 1)
+            Graphics.CSurface.GL_PushMatrix()
+            Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(1, 1, 1, 1))
+            Graphics.CSurface.GL_PopMatrix()
+            Graphics.CSurface.GL_SetStencilMode(2, 1, 1)
+            Graphics.CSurface.GL_PushMatrix()
+            self.crewAnim.position = Hyperspace.Pointf(mask.getPos().x - 2, mask.getPos().y)
+            self.crewAnim:SetCurrentFrame(0)
+            Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(.42, .61, .61, .6))
+            self.crewAnim:OnRender(1, Graphics.GL_Color(.1, .1, .1, .5), false)
+            Graphics.CSurface.GL_PopMatrix()
+            Graphics.CSurface.GL_SetStencilMode(0, 1, 1)
+            Graphics.CSurface.GL_PopStencilMode()
+        else
+            lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3))(self)
         end
-        portrait.crewAnimBaseId = baseId
-        portrait.updateCrewPortrait = function(self, newCrewmem)
-            if not newCrewmem then return end
-            local newBaseId = newCrewmem:GetSpecies()
-            if newBaseId == self.crewAnimBaseId and self.crewAnim then
-                return
-            end
-            local newFallbackId = newCrewmem.extend:GetDefinition().race
-            local newCached = lwl.getCrewPortraitAnim(newBaseId, newFallbackId)
-            self.crewAnim = newCached and newCached.anim or nil
-            self.crewAnimBaseId = newBaseId
-        end
-        return portrait
-    end
+    end)
 
-    local animPlaceholder = buildCrewPortrait(crewmem)
+    if cached then
+        portrait.crewAnim = cached.anim
+    end
+    
+    portrait.crewAnimBaseId = baseId
+    portrait.updateCrewPortrait = function(self, newCrewmem)
+        if not newCrewmem then return end
+        local newBaseId = newCrewmem:GetSpecies()
+        if newBaseId == self.crewAnimBaseId and self.crewAnim then
+            return
+        end
+        local newFallbackId = newCrewmem.extend:GetDefinition().race
+        local newCached = lwl.getCrewPortraitAnim(newBaseId, newFallbackId)
+        self.crewAnim = newCached and newCached.anim or nil
+        self.crewAnimBaseId = newBaseId
+    end
+    return portrait
+end
+
+local function buildCrewRow(crewmem)
+    local crewPortrait = buildCrewPortrait(crewmem)
     local nameText = lwui.buildFixedTextBox(0, 0, mCrewLineNameWidth, mCrewLineHeight, tabOneStandardVisibility, NOOP, mCrewLineTextSize)
     nameText.text = crewmem:GetName()
     
     local horizContainer = lwui.buildHorizontalContainer(3, 0, 100, mCrewLineHeight, tabOneStandardVisibility, NOOP,
-        {animPlaceholder, nameText}, true, false, mCrewLinePadding)
+        {crewPortrait, nameText}, true, false, mCrewLinePadding)
     horizContainer[GEX_CREW_ID] = crewmem.extend.selfId
     
     local slotsDefinition = cels.getCrewSlots(crewmem.extend:GetDefinition().race)
@@ -696,9 +701,9 @@ equipment_N: gives the index of the equipment generating function array used to 
 equipment_location_N: gives -2 if no longer in use, -1 for inventory slot, or crewId if attached to a crew member.
 that's it, no fancy saving or loading stuff.
 --]]
-------------------------------------END GUI CREATION----------------------------------------------------------
+--#endregion ----------------------------------END GUI CREATION----------------------------------------------------------
 
-------------------------------------REALTIME EVENTS----------------------------------------------------------
+--#region ----------------------------------REALTIME EVENTS----------------------------------------------------------
 local function tickEquipment()
     if not lwce.isInitialized() then return end
     local ownshipManager = Hyperspace.ships(0)
@@ -833,9 +838,10 @@ end, function(tabName)
     end
     mTabbedWindow = tabName
 end)
-------------------------------------END REALTIME EVENTS----------------------------------------------------------
------------------------------------------WAYS TO GET ITEMS---------------------------------------------------------------
+--#endregion ----------------------------------END REALTIME EVENTS----------------------------------------------------------
+--#region ---------------------------------------WAYS TO GET ITEMS---------------------------------------------------------------
 function gex_give_item(index)
+    mItemPityTracker = 0
     local equip = mEquipmentGenerationTable[index]()
     addToInventory(equip)
     Hyperspace.Sounds:PlaySoundMix("levelup", -1, false)
@@ -878,6 +884,17 @@ end
 local mGuaranteedEventTable = {}
 cel.ITEM_ANY = "CEL_ANY_ITEM"
 
+---Linear for now.
+---@return boolean
+local function givePityReward()
+    local giveReward = false
+    mItemPityTracker = mItemPityTracker + 1
+    if mItemPityTracker >= PITY_ITEM_MISS_CAP then
+        giveReward = true
+    end
+    return giveReward
+end
+
 --[[
 After winning a battle, a chance to give one item.  Scales with TopScore.sector.  
 --]]
@@ -906,7 +923,7 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
         itemChance = itemChance + (event.stuff.missiles * .023)
         itemChance = itemChance * mGlobal:GetScoreKeeper().currentScore.sector * .25
         
-        if (math.random() < itemChance) then
+        if givePityReward() or (math.random() < itemChance) then
             local equip = gex_give_random_item(false)
             if equip then
                 event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
@@ -930,7 +947,7 @@ end
 constructEnhancementsLayout()
 lweb.registerPlayerVariableInitializationListener(setupSave)
 --todo fix an issue where you can't control any of your crew when you start a new run.
-
+--#endregion
 ---------------------Things with Dependencies-----------------------------------
 
 ---Mark an event to always give an item.  Appends "Obtained "..item.name to the event.  If you want more than than, change the text yourself in lua or xml.
