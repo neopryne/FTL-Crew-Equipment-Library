@@ -2,6 +2,7 @@
 
 <FTL>
 	<mod:findLike type="scripts">
+		<mod-append:script>data/crew_equip_scripts/init.lua</mod-append:script>
 		<mod-append:script>data/crew_equip_scripts/crew_equipment_library_slots.lua</mod-append:script>
 		<mod-append:script>data/crew_equip_scripts/crew_equipment_library.lua</mod-append:script>
 	</mod:findLike>

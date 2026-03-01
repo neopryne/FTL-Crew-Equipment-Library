@@ -747,12 +747,25 @@ local function onTickNoPause() --todo this isn't properly handling the crew chan
     --print("stability?", Hyperspace.playerVariables.stability)
 end
 
+local function loadStuff()
+    if not mSetupFinished then
+        loadPersistedEquipment()
+        mSetupFinished = true
+    end
+end
+
 local function addCrew()
+    local crewAdded = false
     local addedCrew = mCrewChangeObserver.getAddedCrew()
     for _, crewId in ipairs(addedCrew) do
         local crewmem = lwl.getCrewById(crewId)
         --print("eq crew added ", crewId, crewmem:GetName())
         mCrewListContainer.addObject(buildCrewRow(crewmem))
+        crewAdded = true
+    end
+    
+    if crewAdded then
+        loadStuff()
     end
 end
 
@@ -787,13 +800,6 @@ local function removeCrew()
     end
 end
 
-local function loadStuff()
-    if not mSetupFinished then
-        loadPersistedEquipment()
-        mSetupFinished = true
-    end
-end
-
 local function onTick()
     if (not mCrewChangeObserver.isInitialized()) then return end
     --if in hangar, unmark setup.
@@ -813,7 +819,6 @@ lwst.registerOnTick(TAG.."setup_reset", onTickNoPause, true) --todo grab this fr
 script.on_render_event(Defines.RenderEvents.TABBED_WINDOW, function()
 -- lwl.safe_script.on_render_event(TAG.."_on_render", Defines.RenderEvents.TABBED_WINDOW, function()
 end, function(tabName)
-    loadStuff()
     --might need to put this in the reset category.
     --print("tab name "..tabName)
     if tabName == ENHANCEMENTS_TAB_NAME then
