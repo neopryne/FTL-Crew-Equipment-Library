@@ -8,7 +8,7 @@ See buildBlueprintFromDefinition for more optional arguments.  Item images shoul
 ]]
 
  if (not mods) then mods = {} end
- local cel = mods.crew_equipment_library
+local cel = mods.crew_equipment_library
 local cels = mods.crew_equipment_library_slots
 local lwl = mods.lightweight_lua
 local lwst = mods.lightweight_stable_time
@@ -57,7 +57,7 @@ for _,event in ipairs(EVENT_LIST) do
 end
 
 local PITY_ITEM_MISS_CAP = 12
-local mItemPityTracker = 0
+local KEY_PITY_ITEM_TRACKER = "PITY_ITEM_COUNTER"
 
 --Do not modify these, actually maybe add a copy getter or something.
 cel.mNameToItemIndexTable = {}
@@ -846,7 +846,7 @@ end)
 --#endregion ----------------------------------END REALTIME EVENTS----------------------------------------------------------
 --#region ---------------------------------------WAYS TO GET ITEMS---------------------------------------------------------------
 function gex_give_item(index)
-    mItemPityTracker = 0
+    Hyperspace.playerVariables[KEY_PITY_ITEM_TRACKER] = 0
     local equip = mEquipmentGenerationTable[index]()
     addToInventory(equip)
     Hyperspace.Sounds:PlaySoundMix("levelup", -1, false)
@@ -893,8 +893,8 @@ cel.ITEM_ANY = "CEL_ANY_ITEM"
 ---@return boolean
 local function givePityReward()
     local giveReward = false
-    mItemPityTracker = mItemPityTracker + 1
-    if mItemPityTracker >= PITY_ITEM_MISS_CAP then
+    Hyperspace.playerVariables[KEY_PITY_ITEM_TRACKER] = Hyperspace.playerVariables[KEY_PITY_ITEM_TRACKER] + 1
+    if Hyperspace.playerVariables[KEY_PITY_ITEM_TRACKER] >= PITY_ITEM_MISS_CAP then
         giveReward = true
     end
     return giveReward
@@ -928,11 +928,13 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
         itemChance = itemChance + (event.stuff.missiles * .023)
         itemChance = itemChance * mGlobal:GetScoreKeeper().currentScore.sector * .25
         
-        if givePityReward() or (math.random() < itemChance) then
-            local equip = gex_give_random_item(false)
-            if equip then
-                event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
-                lwl.appendEventText(event, "\nUpon closer inspection, some of the scrap is actually a "..equip.name.."!")
+        if itemChance > 0 then
+            if givePityReward() or (math.random() < itemChance) then
+                local equip = gex_give_random_item(false)
+                if equip then
+                    event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
+                    lwl.appendEventText(event, "\nUpon closer inspection, some of the scrap is actually a "..equip.name.."!")
+                end
             end
         end
     end
