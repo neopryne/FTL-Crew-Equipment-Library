@@ -7,7 +7,7 @@ Usage:
 See buildBlueprintFromDefinition for more optional arguments.  Item images should be 30x30 pngs, and look better with at least some transparency.
 ]]
 
- if (not mods) then mods = {} end
+if (not mods) then mods = {} end
 local cel = mods.crew_equipment_library
 local cels = mods.crew_equipment_library_slots
 local lwl = mods.lightweight_lua
@@ -59,6 +59,17 @@ end
 local PITY_ITEM_MISS_CAP = 12
 local KEY_PITY_ITEM_TRACKER = "PITY_ITEM_COUNTER"
 
+local CREW_LINE_Y_OFFSET = 2
+local CREW_LINE_HEIGHT = 30
+local CREW_LINE_Y_PADDING = 6
+local CREW_LINE_PADDING = 4
+local CREW_ROW_PADDING = 4
+local CREW_LINE_NAME_WIDTH = 90
+local CREW_LINE_TEXT_SIZE = 11
+local TAB_TOP = 139
+local sEquipmentTabTop = TAB_TOP + EQUIPMENT_ICON_SIZE
+
+
 --Do not modify these, actually maybe add a copy getter or something.
 cel.mNameToItemIndexTable = {}
 cel.mItemList = lwsil.SelfIndexingList:new()
@@ -74,13 +85,7 @@ local mTab = 1
 local mGlobal = Hyperspace.Global.GetInstance()
 --Items must be added to this list when they are created or loaded
 --todo what was this local?
-local mCrewLineHeight = 30
-local mCrewLinePadding = 10
-local mCrewRowPadding = 10
-local mCrewLineNameWidth = 90
-local mCrewLineTextSize = 11
-local mTabTop = 139
-local mEquipmentTabTop = mTabTop + EQUIPMENT_ICON_SIZE
+
 local mItemsSoldValue = 0
 local mItemsSold = 0
 
@@ -479,15 +484,18 @@ end
 --#endregion ----------------------------------END ITEM STORAGE FUNCTIONS----------------------------------------------------------
 
 --#region ----------------------------------GUI CREATION----------------------------------------------------------
+
+
+
 local function buildInventoryContainer()
-    local verticalContainer = lwui.buildVerticalContainer(655, mEquipmentTabTop, 300, 20, tabOneStandardVisibility, NOOP,
+    local verticalContainer = lwui.buildVerticalContainer(655, sEquipmentTabTop, 300, 20, tabOneStandardVisibility, NOOP,
             {}, false, true, 7)
     for i=1,inventoryRows do
-        local horizContainer = lwui.buildHorizontalContainer(0, 0, 100, mCrewLineHeight, tabOneStandardVisibility, NOOP,
+        local horizContainer = lwui.buildHorizontalContainer(0, 0, 100, CREW_LINE_HEIGHT, tabOneStandardVisibility, NOOP,
             {}, true, false, 7)
         for j=1,inventoryColumns do
             local buttonNum = ((i - 1) * inventoryRows) + j
-            local button = lwui.buildInventoryButton(buttonNum, 0, 0, mCrewLineHeight, mCrewLineHeight,
+            local button = lwui.buildInventoryButton(buttonNum, 0, 0, CREW_LINE_HEIGHT, CREW_LINE_HEIGHT,
                     tabOneStandardVisibility, lwui.inventoryButtonDefault,
                     inventoryFilterFunctionAny, buttonAddInventory, NOOP)
             horizContainer.addObject(button)
@@ -499,7 +507,7 @@ local function buildInventoryContainer()
 end
 
 local function buildIButton(filterFunction, renderFunction, itemTypes, crewId)
-    local standardButton = lwui.buildInventoryButton("", 0, 0, mCrewLineHeight, mCrewLineHeight,
+    local standardButton = lwui.buildInventoryButton("", 0, CREW_LINE_Y_OFFSET, CREW_LINE_HEIGHT, CREW_LINE_HEIGHT,
         tabOneStandardVisibility, renderFunction, filterFunction, buttonAddToCrew, NOOP)
     standardButton[GEX_CREW_ID] = crewId
     return standardButton
@@ -517,11 +525,13 @@ local function inventoryButtonToolDefault(object)
     lwui.inventoryButtonCustomColors(object, Graphics.GL_Color(1.3/100, 12.8/100, 4.1/100, 1), Graphics.GL_Color(.7/100, 6.7/100, 2/100, 1))
 end
 
+
 local function buildSingleButton(crewmem, buttonType)
     local object
+    
     local crewId = crewmem.extend.selfId
     if buttonType == cels.TYPE_NONE then
-        object = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility,
+        object = lwui.buildObject(0, CREW_LINE_Y_OFFSET, CREW_LINE_HEIGHT, CREW_LINE_HEIGHT, tabOneStandardVisibility,
             lwui.inventoryButtonDefaultDisabled)
     elseif buttonType == cels.TYPE_WEAPON then
         object = buildIButton(generateStandardFilterFunction(buttonType),
@@ -536,9 +546,9 @@ local function buildSingleButton(crewmem, buttonType)
         object = buildIButton(inventoryFilterFunctionAny, lwui.inventoryButtonFadedGayDefault, buttonType, crewId)
         object[GEX_CREW_ID] = crewId
     elseif buttonType == cels.TYPE_HALF_WIDTH_SPACER then
-        object = lwui.buildObject(0, 0, (mCrewLineHeight - mCrewLinePadding) / 2, mCrewLineHeight, tabOneStandardVisibility, NOOP)
+        object = lwui.buildObject(0, CREW_LINE_Y_OFFSET, (CREW_LINE_HEIGHT - CREW_LINE_PADDING) / 2, CREW_LINE_HEIGHT, tabOneStandardVisibility, NOOP)
     elseif buttonType == cels.TYPE_FULL_WIDTH_SPACER then
-        object = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, NOOP)
+        object = lwui.buildObject(0, CREW_LINE_Y_OFFSET, CREW_LINE_HEIGHT, CREW_LINE_HEIGHT, tabOneStandardVisibility, NOOP)
     else
         error("GEX Unknown button type "..buttonType)
     end
@@ -546,10 +556,11 @@ local function buildSingleButton(crewmem, buttonType)
 end
 
 local function buildCrewPortrait(crewmemLocal)
+    local crewPortraitExtraOffset = -6
     local baseId = crewmemLocal:GetSpecies()
     local fallbackId = crewmemLocal.extend:GetDefinition().race
     local cached = lwl.getCrewPortraitAnim(baseId, fallbackId)
-    local portrait = lwui.buildObject(0, 0, mCrewLineHeight, mCrewLineHeight, tabOneStandardVisibility, function(self)
+    local portrait = lwui.buildObject(0, CREW_LINE_Y_OFFSET + crewPortraitExtraOffset, CREW_LINE_HEIGHT, CREW_LINE_HEIGHT, tabOneStandardVisibility, function(self)
         if self.crewAnim then
             --print("anim: ", lwl.dumpObject(self.crewAnim))
             local mask = self.maskFunction()
@@ -564,13 +575,13 @@ local function buildCrewPortrait(crewmemLocal)
             Graphics.CSurface.GL_PushMatrix()
             self.crewAnim.position = Hyperspace.Pointf(mask.getPos().x - 2, mask.getPos().y)
             self.crewAnim:SetCurrentFrame(0)
-            Graphics.CSurface.GL_DrawRect(mask.getPos().x, mask.getPos().y, mask.width, mask.height, Graphics.GL_Color(.42, .61, .61, .6))
-            self.crewAnim:OnRender(1, Graphics.GL_Color(.1, .1, .1, .5), false)
+            self.crewAnim:OnRender(1, Graphics.GL_Color(1, 1, 1, 1), false) --I think full color is better than the murky thing I was doing before.
             Graphics.CSurface.GL_PopMatrix()
             Graphics.CSurface.GL_SetStencilMode(0, 1, 1)
             Graphics.CSurface.GL_PopStencilMode()
         else
-            lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3))(self)
+            lwui.solidRectRenderFunction(Graphics.GL_Color(.8, .2, .2, .3))(self) --Red square means no crew animation found, this is currently the case for vampweed cultists.
+            --todo ask arc about this.
         end
     end)
 
@@ -595,14 +606,16 @@ end
 
 local function buildCrewRow(crewmem)
     local crewPortrait = buildCrewPortrait(crewmem)
-    local nameText = lwui.buildFixedTextBox(0, 0, mCrewLineNameWidth, mCrewLineHeight, tabOneStandardVisibility, NOOP, mCrewLineTextSize)
+    local nameText = lwui.buildFixedTextBox(0, CREW_LINE_Y_OFFSET + 6, CREW_LINE_NAME_WIDTH, CREW_LINE_HEIGHT, tabOneStandardVisibility, NOOP, CREW_LINE_TEXT_SIZE)
     nameText.text = crewmem:GetName()
     
-    local horizContainer = lwui.buildHorizontalContainer(3, 0, 100, mCrewLineHeight, tabOneStandardVisibility, NOOP,
-        {crewPortrait, nameText}, true, false, mCrewLinePadding)
+    local horizContainer = lwui.buildHorizontalContainer(3, CREW_LINE_Y_OFFSET, 264, CREW_LINE_HEIGHT + CREW_LINE_Y_PADDING, tabOneStandardVisibility,
+        lwui.solidRectRenderFunction(Graphics.GL_Color(.24, .3, .35, .75)),
+        {crewPortrait, nameText}, false, false, CREW_LINE_PADDING)
     horizContainer[GEX_CREW_ID] = crewmem.extend.selfId
     
     local slotsDefinition = cels.getCrewSlots(crewmem.extend:GetDefinition().race)
+    horizContainer.addObject(buildSingleButton(crewmem, cels.TYPE_FULL_WIDTH_SPACER))
     for _,defType in ipairs(slotsDefinition) do
         horizContainer.addObject(buildSingleButton(crewmem, defType))
     end
@@ -610,21 +623,29 @@ local function buildCrewRow(crewmem)
 end
 
 local function buildCrewEquipmentScrollBar()
-    return lwui.buildVerticalContainer(0, 0, 300, 20, tabOneStandardVisibility, NOOP, {}, false, true, mCrewRowPadding)
+    return lwui.buildVerticalContainer(0, 0, 300, 20, tabOneStandardVisibility, NOOP, {}, false, true, CREW_ROW_PADDING)
 end
 
 local colorWeaponText = "996969"
 local colorArmorText = "5b5e80"
 local colorToolText = "75a26e"
 
+lwui.testScrollBarSkin2 = lwui.constructScrollBarSkin(--todo remove.  Also, does this work outside this file?
+        lwui.spriteRenderFunction("scrollbarStyles/traveller/scroll_up_on.png"),
+        lwui.spriteRenderFunction("scrollbarStyles/traveller/scroll_down_on.png"),
+        lwui.travellerScrollNubRender(),
+        lwui.spriteRenderFunction("scrollbarStyles/traveller/scroll_bar.png"),
+        lwui.solidRectRenderFunction(Graphics.GL_Color(.2, .8, .8, .3)),
+        16)
+
 local function constructEnhancementsLayout() --todo lwui there might be a better way to pass contents that lets people define their own stuff inside.
     --Left hand side
     --print("building crew layout")
     mCrewListContainer = buildCrewEquipmentScrollBar()
-    local crewListScrollWindow = lwui.buildVerticalScrollContainer(341, mEquipmentTabTop, 290, 370, tabOneStandardVisibility, mCrewListContainer, lwui.defaultScrollBarSkin)
+    local crewListScrollWindow = lwui.buildVerticalScrollContainer(341, sEquipmentTabTop, 290, 370, tabOneStandardVisibility, mCrewListContainer, lwui.defaultScrollBarSkin)
     lwui.addTopLevelObject(crewListScrollWindow, LAYER_TABBED_WINDOW)
     --lwui.addTopLevelObject(ib1)
-    local nameHeader = lwui.buildFixedTextBox(340, mTabTop, 260, 26, tabOneStandardVisibility, NOOP, 16)
+    local nameHeader = lwui.buildFixedTextBox(340, TAB_TOP, 260, 26, tabOneStandardVisibility, NOOP, 16)
     local nameHeaderString = "       Name             "
     local weaponHeaderString = "[style[color:"..colorWeaponText.."]]".."Weapon ".."[[/style]]"
     local armorHeaderString = "[style[color:"..colorArmorText.."]]".."Armor ".."[[/style]]"
@@ -638,18 +659,18 @@ local function constructEnhancementsLayout() --todo lwui there might be a better
     lwui.addTopLevelObject(mDescriptionHeader, LAYER_TABBED_WINDOW)
     --print("lwui added tabbed window")
     mDescriptionTextBox = lwui.buildDynamicHeightTextBox(0, 0, 245, 90, tabOneStandardVisibility, NOOP, 10)
-    local descriptionTextScrollWindow = lwui.buildVerticalScrollContainer(643, 384, 260, 150, tabOneStandardVisibility, mDescriptionTextBox, lwui.testScrollBarSkin)
+    local descriptionTextScrollWindow = lwui.buildVerticalScrollContainer(643, 384, 260, 150, tabOneStandardVisibility, mDescriptionTextBox, lwui.testScrollBarSkin2)
     lwui.addTopLevelObject(descriptionTextScrollWindow, LAYER_TABBED_WINDOW)
 
     --Upper right corner
     --It's a bunch of inventory buttons, representing how many slots you have to hold this stuff you don't have equipped currently.
-    local inventoryHeader = lwui.buildFixedTextBox(622, mTabTop, 220, 26, tabOneStandardVisibility, NOOP, 14)
+    local inventoryHeader = lwui.buildFixedTextBox(622, TAB_TOP, 220, 26, tabOneStandardVisibility, NOOP, 14)
     inventoryHeader.text = "Inventory"
     lwui.addTopLevelObject(inventoryHeader, LAYER_TABBED_WINDOW)
     lwui.addTopLevelObject(buildInventoryContainer(), LAYER_TABBED_WINDOW)
     local trashY = 70
     local trashX = 876
-    local trashButton = lwui.buildInventoryButton("TrashItemButton", trashX, 280 + trashY, mCrewLineHeight, mCrewLineHeight,
+    local trashButton = lwui.buildInventoryButton("TrashItemButton", trashX, 280 + trashY, CREW_LINE_HEIGHT, CREW_LINE_HEIGHT,
         tabOneStandardVisibility, lwui.spriteRenderFunction("items/trash.png"), inventoryFilterFunctionAny, trashItem, NOOP)
     lwui.addTopLevelObject(trashButton, LAYER_TABBED_WINDOW)
     local trashHeader = lwui.buildFixedTextBox(trashX - 2, 252 + trashY, 60, 35, tabOneStandardVisibility, NOOP, 16)
@@ -907,7 +928,8 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
 -- lwl.safe_script.on_internal_event(TAG.."_random_item_reward", Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(event)
     local autoItemList = mGuaranteedEventTable[event.eventName]
     if autoItemList then
-        for _,itemName in ipairs(autoItemList) do
+        for _,itemObject in ipairs(autoItemList) do
+            local itemName = itemObject.name
             local item
             if itemName == cel.ITEM_ANY then
                 item = gex_give_random_item(false)
@@ -915,10 +937,16 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
                 item = gex_give_item(cel.mNameToItemIndexTable[itemName])
             end
             if item then
-                lwl.appendEventText(event, "\nObtained "..item.name)
+                lwl.appendEventText(event, itemObject.appendEventText)
+                itemObject.friendlyName = item.name
             else
                 error("Tried to create unregistered item "..itemName.."! The mod that adds it is likely not installed.")
             end
+        end
+
+        lwl.appendEventText(event, "\n")
+        for _,itemObject in ipairs(autoItemList) do
+            lwl.appendEventText(event, "\nObtained "..itemObject.friendlyName.."!")
         end
     else --Do the usual method of awarding items.
         local itemChance = 0
@@ -933,7 +961,7 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
                 local equip = gex_give_random_item(false)
                 if equip then
                     event.stuff.scrap = math.max(0, event.stuff.scrap - 5)
-                    lwl.appendEventText(event, "\nUpon closer inspection, some of the scrap is actually a "..equip.name.."!")
+                    lwl.appendEventText(event, "\n\nUpon closer inspection, some of the scrap is actually a "..equip.name.."!")
                 end
             end
         end
@@ -960,11 +988,18 @@ lweb.registerPlayerVariableInitializationListener(setupSave)
 ---Mark an event to always give an item.  Appends "Obtained "..item.name to the event.  If you want more than than, change the text yourself in lua or xml.
 ---@param itemName string "ANY" if item should be random, or the item name to specify one
 ---@param eventName string event.eventName of the event to give the item in
-function cel.addGuaranteedItemEvent(eventName, itemName)
+---@param appendEventText string Optional text to append to the event.
+function cel.addGuaranteedItemEvent(eventName, itemName, appendEventText)
     if not mGuaranteedEventTable[eventName] then
-        mGuaranteedEventTable[eventName] = {}
+        mGuaranteedEventTable[eventName] = {} --todo make this {item, text} with text for each item registered.
     end
-    table.insert(mGuaranteedEventTable[eventName], itemName)
+    local eventText
+    if appendEventText then --handle null text case
+        eventText = appendEventText
+    else
+        eventText = ""
+    end
+    table.insert(mGuaranteedEventTable[eventName], {name = itemName, appendEventText = eventText})
 end
 
 --In the crew loop, each crew will check the items assigned to them and call their onTick functions, (pass themselves in?)
