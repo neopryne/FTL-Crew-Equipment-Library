@@ -58,6 +58,7 @@ end
 
 local PITY_ITEM_MISS_CAP = 12
 local KEY_PITY_ITEM_TRACKER = "PITY_ITEM_COUNTER"
+local ITEM_DESTROYED_VALUE = -2
 
 local CREW_LINE_Y_OFFSET = 2
 local CREW_LINE_HEIGHT = 30
@@ -144,12 +145,13 @@ local function buildItemBuilder(name, itemType, renderFunction, description, onC
         builtItem.onLoad = onLoad
         builtItem.onRender = onRender
         fireEvent(cel.ITEM_OBTAINED_EVENT, builtItem)
-        if builtItem.assigned_slot ~= -2 then --Item was removed on create
+        local shouldAppend = false
+        if builtItem.assigned_slot ~= ITEM_DESTROYED_VALUE then --Item was removed on create
             cel.mItemList:append(builtItem)
-            return builtItem
+            shouldAppend = true
         end
         --print("built item, item list now has ", mItemList.length)
-        return nil
+        return builtItem, shouldAppend
     end
 end
 --#region ----------------------------------API----------------------------------------------------------
@@ -300,7 +302,7 @@ function cel.deleteItem(button, item)
     if button then
         button.item = nil
     end
-    item.assigned_slot = -2 --destroyed
+    item.assigned_slot = ITEM_DESTROYED_VALUE --destroyed
     cel.persistEquipment()
 end
 
@@ -453,15 +455,15 @@ local function loadPersistedEquipment()
         local generationTableIndex = mEquipmentPlayerVariableInterface.getVariable(i, KEY_EQUIPMENT_GENERATING_INDEX) --Hyperspace.playerVariables[KEY_EQUIPMENT_GENERATING_INDEX..i]
         --print("index ", generationTableIndex)
         if generationTableIndex > 0 and generationTableIndex <= #mEquipmentGenerationTable then
-            local item = mEquipmentGenerationTable[generationTableIndex]() --todo harden this so it doesn't crash so easily if everything isn't exactly like it expects it.
-            if item then
+            local item, shouldAppend = mEquipmentGenerationTable[generationTableIndex]() --todo harden this so it doesn't crash so easily if everything isn't exactly like it expects it.
+            if item and shouldAppend then
                 local position = mEquipmentPlayerVariableInterface.getVariable(i, KEY_EQUIPMENT_ASSIGNMENT)--Hyperspace.playerVariables[KEY_EQUIPMENT_ASSIGNMENT..i]
                 --print("custom loading", item.name, i)
                 item.onLoad(item, i)
                 --print("loading ", item.name, " genIndx ", item.generating_index, " slot ", position)
                 if position == nil then 
-                    position = -2
-                    item.assigned_slot = -2
+                    position = ITEM_DESTROYED_VALUE
+                    item.assigned_slot = ITEM_DESTROYED_VALUE
                 end
                 if position == -1 then
                     addToInventory(item)
@@ -868,8 +870,10 @@ end)
 --#region ---------------------------------------WAYS TO GET ITEMS---------------------------------------------------------------
 function gex_give_item(index)
     Hyperspace.playerVariables[KEY_PITY_ITEM_TRACKER] = 0
-    local equip = mEquipmentGenerationTable[index]()
-    addToInventory(equip)
+    local equip, shouldEquip = mEquipmentGenerationTable[index]()
+    if shouldEquip then
+        addToInventory(equip)
+    end
     Hyperspace.Sounds:PlaySoundMix("levelup", -1, false)
     return equip
 end
@@ -931,6 +935,7 @@ script.on_internal_event(Defines.InternalEvents.PRE_CREATE_CHOICEBOX, function(e
         for _,itemObject in ipairs(autoItemList) do
             local itemName = itemObject.name
             local item
+            local savedItemName --Some items delete themselves on creation, save the name so we don't lose it.  wait, even if the item is deleted, it should have a name...
             if itemName == cel.ITEM_ANY then
                 item = gex_give_random_item(false)
             else
